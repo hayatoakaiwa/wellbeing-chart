@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>状態の遷移</title>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{background:#f1f5f9;color:#1e293b;font-family:-apple-system,'Hiragino Sans','Yu Gothic UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+.page-tab-bar{width:100%;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;padding:0 32px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.06);}
+.page-tab{background:transparent;border:none;border-bottom:2px solid transparent;color:#94a3b8;padding:14px 20px 12px;font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;transition:all 0.18s;white-space:nowrap;}
+.page-tab:hover{color:#475569;}
+.page-tab.active{color:#0d9488;border-bottom-color:#0d9488;font-weight:600;}
+.page-content{display:none;flex-direction:column;align-items:center;width:100%;padding:24px;gap:16px;}
+.page-content.active{display:flex;}
+.variant-tabs{display:flex;gap:6px;background:#e2e8f0;padding:4px;border-radius:10px;align-self:flex-start;}
+.variant-tab{background:transparent;border:none;color:#64748b;border-radius:7px;padding:7px 20px;font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;transition:all 0.18s;white-space:nowrap;}
+.variant-tab.active{background:#fff;color:#0f172a;box-shadow:0 1px 4px rgba(0,0,0,0.12);}
+.card{background:#fff;border-radius:12px;padding:24px 28px 20px;width:100%;max-width:1080px;box-shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(0,0,0,0.06);}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;min-height:36px;}
+.title{font-size:13px;font-weight:500;color:#64748b;letter-spacing:0.04em;}
+.filter-btn{background:#e9ecf0;border:none;color:#64748b;border-radius:6px;padding:6px 13px;font-size:12px;font-family:inherit;cursor:pointer;transition:all 0.18s;white-space:nowrap;flex-shrink:0;}
+.filter-btn:hover{background:#dde1e7;color:#334155;}
+.filter-btn.active{background:#0d9488;color:#fff;font-weight:500;}
+.seg-tabs{display:flex;background:#e9ecf0;border-radius:7px;padding:3px;gap:2px;}
+.seg-tab{background:transparent;border:none;color:#64748b;border-radius:5px;padding:4px 12px;font-size:12px;font-family:inherit;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.seg-tab.active{background:#fff;color:#0f172a;font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+.seg-btns{display:flex;gap:5px;flex-wrap:wrap;}
+.filter-divider{width:1px;height:20px;background:#e2e8f0;flex-shrink:0;}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:12px;justify-content:center;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b;cursor:pointer;user-select:none;transition:opacity 0.2s;}
+.legend-item.off{opacity:0.3;}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.chart-wrap{position:relative;width:100%;overflow:hidden;}
+canvas{display:block;width:100% !important;}
+.tooltip{position:absolute;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;pointer-events:none;font-size:11.5px;opacity:0;transition:opacity 0.12s;z-index:10;min-width:210px;box-shadow:0 4px 20px rgba(0,0,0,0.1);max-height:300px;overflow:hidden;}
+.tooltip.show{opacity:1;}
+.tooltip-date{color:#94a3b8;margin-bottom:7px;font-size:11px;}
+.tooltip-row{display:flex;align-items:center;gap:7px;padding:2px 0;}
+.tdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.tlabel{color:#64748b;flex:1;}
+.tval{color:#1e293b;font-weight:600;font-variant-numeric:tabular-nums;}
+.yaxis-control{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0 6px;border-bottom:1px solid #f1f5f9;margin-bottom:10px;}
+.yaxis-mode-group{display:flex;background:#e9ecf0;border-radius:7px;padding:3px;gap:2px;}
+.yaxis-mode-btn{background:transparent;border:none;color:#64748b;border-radius:5px;padding:4px 13px;font-size:12px;font-family:inherit;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.yaxis-mode-btn.active{background:#fff;color:#0f172a;font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+.yaxis-manual-inputs{display:flex;align-items:center;gap:8px;}
+.yaxis-input-label{display:flex;align-items:center;gap:5px;font-size:11px;color:#64748b;}
+.yaxis-input{width:60px;border:1px solid #cbd5e1;border-radius:6px;padding:4px 8px;font-size:12px;font-family:inherit;color:#1e293b;outline:none;text-align:center;transition:border-color 0.15s;}
+.yaxis-input:focus{border-color:#0d9488;}
+.yaxis-input-sep{color:#94a3b8;font-size:12px;}
+.yaxis-apply-btn{background:#0d9488;border:none;color:#fff;border-radius:6px;padding:5px 13px;font-size:12px;font-family:inherit;cursor:pointer;font-weight:500;transition:background 0.15s;}
+.yaxis-apply-btn:hover{background:#0f766e;}
+.yaxis-reset-btn{background:#e9ecf0;border:none;color:#64748b;border-radius:6px;padding:5px 13px;font-size:12px;font-family:inherit;cursor:pointer;transition:background 0.15s;}
+.yaxis-reset-btn:hover{background:#dde1e7;}
+.yaxis-range-display{font-size:11px;color:#94a3b8;margin-left:4px;}
+.yv-panel{width:100%;max-width:1080px;display:flex;flex-direction:column;gap:12px;}
+.chart-badge{font-size:10px;font-weight:600;background:#e0f2fe;color:#0369a1;border-radius:4px;padding:2px 7px;margin-left:8px;vertical-align:middle;letter-spacing:0.04em;}
+.chart-desc{font-size:12px;color:#64748b;line-height:1.6;margin-bottom:8px;padding:8px 10px;background:#f8fafc;border-radius:7px;border-left:3px solid #0d9488;}
+.context-card{width:100%;max-width:1080px;background:#fff;border-radius:12px;padding:20px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.08),0 4px 16px rgba(0,0,0,0.06);}
+.context-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;cursor:pointer;user-select:none;}
+.context-header-left{display:flex;align-items:center;gap:8px;}
+.context-title{font-size:13px;font-weight:600;color:#334155;letter-spacing:0.03em;}
+.context-badge{font-size:10px;font-weight:600;background:#e0f2fe;color:#0369a1;border-radius:4px;padding:2px 7px;letter-spacing:0.04em;}
+.context-toggle{font-size:11px;color:#94a3b8;transition:transform 0.2s;}
+.context-toggle.open{transform:rotate(180deg);}
+.context-body{display:flex;flex-direction:column;gap:12px;}
+.context-section{background:#f8fafc;border-radius:8px;padding:14px 16px;border-left:3px solid #e2e8f0;}
+.context-section.task{border-left-color:#f59e0b;}
+.context-section.premise{border-left-color:#0ea5e9;}
+.context-section.issue{border-left-color:#6366f1;}
+.context-section-title{font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px;}
+.context-section.task .context-section-title{color:#b45309;}
+.context-section.premise .context-section-title{color:#0ea5e9;}
+.context-section.issue .context-section-title{color:#6366f1;}
+.context-items{display:flex;flex-direction:column;gap:6px;}
+.context-item{display:flex;align-items:flex-start;gap:8px;}
+.context-item-text{flex:1;font-size:12px;line-height:1.6;color:#475569;border:none;background:transparent;resize:none;width:100%;font-family:inherit;outline:none;padding:3px 6px;border-radius:5px;transition:background 0.15s;overflow:hidden;min-height:28px;}
+.context-item-text:hover{background:#f1f5f9;}
+.context-item-text:focus{background:#e8f0fe;}
+.context-item-del{background:none;border:none;color:#cbd5e1;font-size:14px;cursor:pointer;padding:3px 4px;line-height:1;border-radius:4px;transition:color 0.15s,background 0.15s;flex-shrink:0;margin-top:2px;}
+.context-item-del:hover{color:#ef4444;background:#fee2e2;}
+.context-add-btn{display:flex;align-items:center;gap:5px;margin-top:8px;background:none;border:1px dashed #cbd5e1;color:#94a3b8;font-size:11px;font-family:inherit;border-radius:6px;padding:5px 10px;cursor:pointer;width:100%;transition:all 0.15s;}
+.context-add-btn:hover{border-color:#94a3b8;color:#64748b;background:#f8fafc;}
+.eval-panel{display:flex;gap:12px;}
+.eval-col{flex:1;border-radius:10px;padding:16px 18px;}
+.eval-col.merit{background:#f0fdf4;}
+.eval-col.demerit{background:#fefce8;}
+.eval-col-head{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;margin-bottom:10px;}
+.eval-col.merit .eval-col-head{color:#166534;}
+.eval-col.demerit .eval-col-head{color:#854d0e;}
+.eval-icon{font-size:13px;}
+.eval-items{display:flex;flex-direction:column;gap:7px;}
+.eval-item{display:flex;align-items:flex-start;gap:5px;}
+.eval-item-text{flex:1;font-size:12px;line-height:1.65;color:#475569;border:none;background:transparent;resize:none;width:100%;font-family:inherit;outline:none;padding:2px 5px;border-radius:5px;transition:background 0.15s;overflow:hidden;min-height:24px;}
+.eval-item-text:hover{background:rgba(0,0,0,0.04);}
+.eval-col.merit .eval-item-text:focus{background:#f0fdf4;}
+.eval-col.demerit .eval-item-text:focus{background:#fefce8;}
+.eval-item-del{background:none;border:none;color:#cbd5e1;font-size:13px;cursor:pointer;padding:2px 4px;line-height:1;border-radius:4px;transition:color 0.15s,background 0.15s;flex-shrink:0;margin-top:2px;}
+.eval-item-del:hover{color:#ef4444;background:#fee2e2;}
+.eval-add-btn{display:flex;align-items:center;gap:5px;margin-top:8px;background:none;border:1px dashed #cbd5e1;color:#94a3b8;font-size:11px;font-family:inherit;border-radius:6px;padding:5px 10px;cursor:pointer;width:100%;transition:all 0.15s;}
+.eval-add-btn:hover{border-color:#94a3b8;color:#64748b;background:rgba(0,0,0,0.03);}
+/* ── B-3 トグル ── */
+.b3-toggle { position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0; }
+.b3-toggle input { opacity:0; width:0; height:0; }
+.b3-slider { position:absolute; cursor:pointer; inset:0; background:#e2e8f0; border-radius:22px; transition:background 0.2s; }
+.b3-slider::before { content:''; position:absolute; height:16px; width:16px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.15); }
+.b3-toggle input:checked + .b3-slider { background:#0d9488; }
+.b3-toggle input:checked + .b3-slider::before { transform:translateX(18px); }
+
+.d1-drop-item { display:block; width:100%; background:transparent; border:none; text-align:left; padding:7px 12px; font-size:12px; font-family:inherit; color:#475569; cursor:pointer; border-radius:6px; transition:background 0.15s; white-space:nowrap; }
+.d1-drop-item:hover { background:#f1f5f9; }
+.d1-drop-item.active { color:#0d9488; font-weight:500; background:#f0fdfa; }
+
+.e1-select { border:none; outline:none; transition:border-color 0.15s; }
+.e1-select:hover { border-color:#cbd5e1; }
+#e1-trigger:hover { border-color:#cbd5e1; }
+#e1-trigger.open { border-color:#0d9488; }
+.e1-group-label { font-size:11px; font-weight:600; color:#94a3b8; letter-spacing:0.06em; text-transform:uppercase; padding:4px 10px 2px; }
+.e1-item,.yy-item { display:block; width:100%; background:transparent; border:none; text-align:left; padding:7px 12px; font-size:13px; font-family:inherit; color:#334155; cursor:pointer; border-radius:6px; transition:background 0.15s; white-space:nowrap; }
+.e1-item:hover,.yy-item:hover { background:#f1f5f9; }
+.e1-item.active,.yy-item.active { color:#0d9488; font-weight:500; background:#f0fdfa; }
+
+.spinner-group { display:flex; align-items:center; gap:4px; }
+.sp-box { display:flex; align-items:center; border:0.5px solid var(--color-border-secondary,#e2e8f0); border-radius:7px; overflow:hidden; background:#fff; }
+.sp-btn { border:none; background:#f1f5f9; padding:4px 9px; font-size:14px; color:#64748b; cursor:pointer; line-height:1; transition:background 0.15s; }
+.sp-btn:hover { background:#e2e8f0; }
+.sp-val { padding:4px 8px; font-size:12px; font-weight:500; color:#1e293b; min-width:34px; text-align:center; }
+.sp-sep { font-size:12px; color:#94a3b8; }
+
+.b1y-num-input { width:80px; border:1px solid #e2e8f0; border-radius:8px; padding:6px 10px; font-size:13px; font-family:inherit; color:#1e293b; background:#fff; outline:none; transition:border-color 0.15s; }
+.b1y-num-input:focus { border-color:#0d9488; }
+.b1y-num-input::-webkit-inner-spin-button,
+.b1y-num-input::-webkit-outer-spin-button { opacity:1; cursor:pointer; }
+.b1y-num-input[type=number] { -moz-appearance:number-input; appearance:number-input; }
+
+.d7-freq-btn{background:#f1f5f9;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-family:inherit;color:#334155;cursor:pointer;}
+.d7-freq-btn.active{background:#0d9488!important;color:#fff!important;}
+.d7-freq-btn:hover{opacity:0.85;}
+.d8-freq-btn{background:#f1f5f9;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-family:inherit;color:#334155;cursor:pointer;}
+.d8-freq-btn.active{background:#0d9488!important;color:#fff!important;}
+.d8-freq-btn:hover{opacity:0.85;}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+
+<div class="page-tab-bar">
+  <button class="page-tab active" data-page="axis">表示期間の可変</button>
+  <button class="page-tab" data-page="yaxis">グラフ縦軸の調整</button>
+</div>
+
+<!-- ページ1 -->
+<div class="page-content active" id="page-axis">
+
+
+  <div class="variant-tabs" id="ax-variant-tabs">
+    <button class="variant-tab active" data-av="a1">A-1. 分けない</button>
+    <button class="variant-tab" data-av="b1">B-1. セグメント切替</button>
+    <button class="variant-tab" data-av="b2">B-2. 並列表示</button>
+    <button class="variant-tab" data-av="d1">D-1. セパレーター区切り</button>
+    <button class="variant-tab" data-av="e1">E-1. セレクト</button>
+  </div>
+
+  <div class="card">
+    <div class="header">
+      <div class="title">状態の遷移</div>
+      <div id="filter-a1" style="display:flex;gap:5px;flex-wrap:wrap;">
+        <button class="filter-btn" data-type="count" data-n="4">直近4回分</button>
+        <button class="filter-btn" data-type="count" data-n="8">過去8回分</button>
+        <button class="filter-btn" data-type="count" data-n="12">過去12回分</button>
+        <button class="filter-btn" data-type="months" data-n="6">過去6ヶ月</button>
+        <button class="filter-btn" data-type="months" data-n="12">過去1年</button>
+        <button class="filter-btn" data-type="months" data-n="36">過去3年</button>
+        <button class="filter-btn" data-type="all">全期間</button>
+      </div>
+      <div id="filter-b1" style="display:none;align-items:center;gap:6px;">
+        <div class="seg-tabs" id="b1-seg-tabs">
+          <button class="seg-tab active" data-seg="count">回数</button>
+          <button class="seg-tab" data-seg="period">期間</button>
+        </div>
+        <div class="seg-btns" id="b1-seg-btns"></div>
+      </div>
+      <div id="filter-b2" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+        <button class="filter-btn" data-type="count" data-n="4">直近4回分</button>
+        <button class="filter-btn" data-type="count" data-n="8">過去8回分</button>
+        <button class="filter-btn" data-type="count" data-n="12">過去12回分</button>
+        <div class="filter-divider"></div>
+        <button class="filter-btn" data-type="months" data-n="6">過去6ヶ月</button>
+        <button class="filter-btn" data-type="months" data-n="12">過去1年</button>
+        <button class="filter-btn" data-type="months" data-n="36">過去3年</button>
+        <button class="filter-btn" data-type="all">全期間</button>
+      </div>
+      <div id="filter-d1" style="display:none;align-items:center;gap:8px;">
+        <button class="filter-btn active" id="d1-count-btn" data-type="count" data-n="4">直近4回分</button>
+        <div style="position:relative;">
+          <button class="filter-btn" id="d1-period-btn" style="display:flex;align-items:center;gap:5px;">
+            期間を選択
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" id="d1-chevron"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div id="d1-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.1);z-index:50;min-width:120px;padding:4px;">
+            <button class="d1-drop-item" data-type="months" data-n="12">過去1年</button>
+            <button class="d1-drop-item" data-type="months" data-n="24">過去2年</button>
+            <button class="d1-drop-item" data-type="months" data-n="36">過去3年</button>
+            <button class="d1-drop-item" data-type="all" data-n="">全期間</button>
+          </div>
+        </div>
+      </div>
+      <div id="filter-e1" style="display:none;align-items:center;">
+        <div style="position:relative;" id="e1-wrap">
+          <button id="e1-trigger" class="e1-select" style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 12px 7px 14px;font-size:13px;font-family:inherit;color:#334155;min-width:160px;">
+            <span id="e1-label">直近4回分</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div id="e1-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.1);z-index:200;min-width:180px;padding:6px;">
+            <div class="e1-group-label">回数</div>
+            <button class="e1-item active" data-type="count" data-n="4">直近4回分</button>
+            <button class="e1-item" data-type="count" data-n="8">過去8回分</button>
+            <button class="e1-item" data-type="count" data-n="12">過去12回分</button>
+            <div class="e1-group-label" style="margin-top:4px;">期間</div>
+            <button class="e1-item" data-type="months" data-n="12">過去1年</button>
+            <button class="e1-item" data-type="months" data-n="24">過去2年</button>
+            <button class="e1-item" data-type="months" data-n="36">過去3年</button>
+            <button class="e1-item" data-type="all" data-n="">全期間</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legend" id="ax-legend"></div>
+    <div class="chart-wrap" id="ax-wrap"><canvas id="ax-cv"></canvas><div class="tooltip" id="ax-tip"></div></div>
+  </div>
+
+
+</div><!-- /page-axis -->
+
+<!-- ページ2 -->
+<div class="page-content" id="page-yaxis">
+
+
+  <div class="variant-tabs" id="yv-tabs">
+    <button class="variant-tab active" data-yv="d6">D-6. 時間軸ラベル</button>
+    <button class="variant-tab" data-yv="d7">D-7. スケーラブル</button>
+  </div>
+
+  <div class="yv-panel" id="yv-b1">
+    <div class="card">
+      <div class="header">
+        <div class="title">状態の遷移</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <div style="position:relative;" id="b1y-dd-wrap">
+          <button class="e1-select" id="b1y-trigger" style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 12px 7px 14px;font-size:13px;font-family:inherit;color:#334155;min-width:160px;">
+            <span id="b1y-label">直近4回分</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div id="b1y-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.1);z-index:200;min-width:180px;padding:6px;">
+            <div class="e1-group-label">回数</div>
+            <button class="yy-item active" data-chart="b1y" data-type="count" data-n="4">直近4回分</button>
+            <button class="yy-item" data-chart="b1y" data-type="count" data-n="8">過去8回分</button>
+            <button class="yy-item" data-chart="b1y" data-type="count" data-n="12">過去12回分</button>
+            <div class="e1-group-label" style="margin-top:4px;">期間</div>
+            <button class="yy-item" data-chart="b1y" data-type="months" data-n="12">過去1年</button>
+            <button class="yy-item" data-chart="b1y" data-type="months" data-n="24">過去2年</button>
+            <button class="yy-item" data-chart="b1y" data-type="months" data-n="36">過去3年</button>
+            <button class="yy-item" data-chart="b1y" data-type="all" data-n="">全期間</button>
+          </div>
+        </div>
+        <div class="yaxis-mode-group">
+          <button class="yaxis-mode-btn active" id="yModeAuto">自動</button>
+          <button class="yaxis-mode-btn" id="yModeManual">手動</button>
+        </div>
+        <div class="spinner-group" id="b1y-spinner" style="display:none;align-items:center;gap:6px;">
+          <input type="number" id="b1y-min-input" class="b1y-num-input" min="0" max="10" step="0.5" value="0">
+          <span class="sp-sep">—</span>
+          <input type="number" id="b1y-max-input" class="b1y-num-input" min="0" max="10" step="0.5" value="10">
+        </div>
+      </div>
+      <div class="legend" id="b1y-legend"></div>
+      <div class="chart-wrap" id="b1y-wrap"><canvas id="b1y-cv"></canvas><div class="tooltip" id="b1y-tip"></div></div>
+    </div>
+    
+  </div>
+
+  <div class="yv-panel" id="yv-b2" style="display:none">
+    <div class="card">
+      <div class="header">
+        <div class="title">状態の遷移</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="position:relative;" id="b2y-dd-wrap">
+          <button class="e1-select" id="b2y-trigger" style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 12px 7px 14px;font-size:13px;font-family:inherit;color:#334155;min-width:160px;">
+            <span id="b2y-label">直近4回分</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div id="b2y-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.1);z-index:200;min-width:180px;padding:6px;">
+            <div class="e1-group-label">回数</div>
+            <button class="yy-item active" data-chart="b2y" data-type="count" data-n="4">直近4回分</button>
+            <button class="yy-item" data-chart="b2y" data-type="count" data-n="8">過去8回分</button>
+            <button class="yy-item" data-chart="b2y" data-type="count" data-n="12">過去12回分</button>
+            <div class="e1-group-label" style="margin-top:4px;">期間</div>
+            <button class="yy-item" data-chart="b2y" data-type="months" data-n="12">過去1年</button>
+            <button class="yy-item" data-chart="b2y" data-type="months" data-n="24">過去2年</button>
+            <button class="yy-item" data-chart="b2y" data-type="months" data-n="36">過去3年</button>
+            <button class="yy-item" data-chart="b2y" data-type="all" data-n="">全期間</button>
+          </div>
+        </div>
+        <div class="yaxis-mode-group">
+          <button class="yaxis-mode-btn active" id="b2ModeAuto">自動</button>
+          <button class="yaxis-mode-btn" id="b2ModeFixed">固定</button>
+        </div>
+        </div>
+      </div>
+      <div class="legend" id="b2y-legend"></div>
+      <div class="chart-wrap" id="b2y-wrap"><canvas id="b2y-cv"></canvas><div class="tooltip" id="b2y-tip"></div></div>
+    </div>
+    
+  </div>
+
+
+  <!-- B-3: トグルUI -->
+
+
+  <!-- D-1: 拡大表示検証 -->
+
+
+  <!-- D-2: 16px余白検証 -->
+
+
+  <!-- D-3: 検証3（差分タブなし） -->
+
+
+  <!-- D-4: Chart.jsロジック検証 -->
+
+
+  <!-- D-4: 間引き検証 -->
+
+
+  <!-- D-6: 時間軸ラベル（Chart.jsスタイル） -->
+  <div class="yv-panel" id="yv-d6" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <span style="font-size:14px;font-weight:500;color:#1e293b;">状態の遷移</span>
+      <div style="position:relative;" id="d6v-dd-wrap">
+        <button class="e1-select" id="d6v-trigger" style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 12px 7px 14px;font-size:13px;font-family:inherit;color:#334155;min-width:160px;">
+          <span id="d6v-label">直近4回分</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div id="d6v-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.1);z-index:200;min-width:180px;padding:6px;">
+          <div class="e1-group-label">回数</div>
+          <button class="yy-item active" data-d6type="count" data-d6n="4">直近4回分</button>
+          <button class="yy-item" data-d6type="count" data-d6n="8">過去8回分</button>
+          <button class="yy-item" data-d6type="count" data-d6n="12">過去12回分</button>
+          <div class="e1-group-label" style="margin-top:4px;">期間</div>
+          <button class="yy-item" data-d6type="months" data-d6n="12">過去1年</button>
+          <button class="yy-item" data-d6type="months" data-d6n="24">過去2年</button>
+          <button class="yy-item" data-d6type="months" data-d6n="36">過去3年</button>
+          <button class="yy-item" data-d6type="all" data-d6n="">全期間</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding-top:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="legend" id="d6-legend" style="flex:1;margin-bottom:0;"></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:12px;">
+          <span style="font-size:12px;color:#64748b;">スコアにフィット</span>
+          <label class="b3-toggle">
+            <input type="checkbox" id="d6Toggle" checked>
+            <span class="b3-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="chart-wrap" id="d6-wrap"><canvas id="d6-cv"></canvas><div class="tooltip" id="d6-tip"></div></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid #f1f5f9;">
+        <span style="font-size:12px;color:#64748b;">頻度切替:</span>
+        <button id="d6-btn-monthly" class="d6-freq-btn active" style="background:#f1f5f9;color:#334155;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-family:inherit;cursor:pointer;">月1回</button>
+        <button id="d6-btn-weekly" class="d6-freq-btn" style="background:#f1f5f9;color:#334155;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-family:inherit;cursor:pointer;">週1回</button>
+        <button id="d6-btn-every20" class="d6-freq-btn" style="background:#f1f5f9;color:#334155;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-family:inherit;cursor:pointer;">20日に1回</button>
+        <span style="font-size:11px;color:#94a3b8;margin-left:4px;" id="d6-freq-info"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- D-7: スケーラブルグラフ（Chart.js type:time） -->
+  <div class="yv-panel" id="yv-d7" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <span style="font-size:14px;font-weight:500;color:#1e293b;">状態の遷移</span>
+      <div style="position:relative;" id="d7v-dd-wrap">
+        <button class="e1-select" id="d7v-trigger" style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 12px 7px 14px;font-size:13px;font-family:inherit;color:#334155;min-width:160px;">
+          <span id="d7v-label">直近4回分</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div id="d7v-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.1);z-index:200;min-width:180px;padding:6px;">
+          <div class="e1-group-label">回数</div>
+          <button class="yy-item active" data-d7type="count" data-d7n="4">直近4回分</button>
+          <button class="yy-item" data-d7type="count" data-d7n="8">過去8回分</button>
+          <button class="yy-item" data-d7type="count" data-d7n="12">過去12回分</button>
+          <div class="e1-group-label" style="margin-top:4px;">期間</div>
+          <button class="yy-item" data-d7type="months" data-d7n="12">過去1年</button>
+          <button class="yy-item" data-d7type="months" data-d7n="24">過去2年</button>
+          <button class="yy-item" data-d7type="months" data-d7n="36">過去3年</button>
+          <button class="yy-item" data-d7type="all" data-d7n="">全期間</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="padding-top:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="legend" id="d7-legend" style="flex:1;margin-bottom:0;"></div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:12px;">
+          <span style="font-size:12px;color:#64748b;">スコアにフィット</span>
+          <label class="b3-toggle">
+            <input type="checkbox" id="d7Toggle" checked>
+            <span class="b3-slider"></span>
+          </label>
+        </div>
+      </div>
+      <div class="chart-wrap" id="d7-wrap" style="height:300px;"><canvas id="d7-cv"></canvas></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid #f1f5f9;">
+        <span style="font-size:12px;color:#64748b;flex-shrink:0;">頻度切替:</span>
+        <button class="d7-freq-btn active" data-freq="month1">月１回</button>
+        <button class="d7-freq-btn" data-freq="week1">週１回</button>
+        <button class="d7-freq-btn" data-freq="day20">20日に１回</button>
+        <button class="d7-freq-btn" data-freq="random">不定期</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- D-7: Chart.js type:time スケーラブル実装 -->
+
+
+</div><!-- /page-yaxis -->
+
+<script>
+const SERIES=[
+  {key:'wellbeing',label:'ウェルビーイングスコア',color:'#4ade80'},
+  {key:'work',label:'仕事への活力',color:'#facc15'},
+  {key:'love',label:'会社への愛着',color:'#f472b6'},
+  {key:'mind',label:'心身の状態',color:'#1e3a8a'},
+  {key:'content',label:'仕事内容',color:'#a855f7'},
+  {key:'human',label:'人間関係',color:'#fb923c'},
+  {key:'load',label:'業務負荷',color:'#7dd3fc'},
+];
+const ALL=[
+  {date:'2020-01-07',wellbeing:6.6,work:6.0,love:6.7,mind:6.0,content:6.6,human:7.1,load:5.7},
+  {date:'2020-01-14',wellbeing:6.3,work:6.3,love:6.5,mind:6.0,content:6.5,human:6.7,load:5.3},
+  {date:'2020-01-21',wellbeing:6.6,work:6.3,love:6.6,mind:6.3,content:6.7,human:6.7,load:5.7},
+  {date:'2020-01-28',wellbeing:6.6,work:6.2,love:6.6,mind:6.5,content:6.4,human:6.8,load:5.3},
+  {date:'2020-02-04',wellbeing:6.7,work:6.4,love:7.0,mind:6.4,content:6.5,human:7.3,load:5.4},
+  {date:'2020-02-11',wellbeing:6.5,work:6.5,love:6.9,mind:6.4,content:6.6,human:7.1,load:5.2},
+  {date:'2020-02-18',wellbeing:6.4,work:6.2,love:6.6,mind:6.1,content:6.3,human:6.9,load:5.6},
+  {date:'2020-02-25',wellbeing:6.4,work:6.2,love:6.6,mind:6.1,content:6.8,human:7.1,load:5.6},
+  {date:'2020-03-03',wellbeing:6.3,work:6.5,love:6.6,mind:6.2,content:6.8,human:7.1,load:5.5},
+  {date:'2020-03-10',wellbeing:6.6,work:6.5,love:7.0,mind:6.1,content:6.2,human:6.9,load:5.4},
+  {date:'2020-03-17',wellbeing:6.4,work:6.6,love:7.0,mind:6.1,content:6.6,human:7.0,load:5.8},
+  {date:'2020-03-24',wellbeing:6.5,work:6.2,love:6.7,mind:6.3,content:6.4,human:7.1,load:5.8},
+  {date:'2020-03-31',wellbeing:6.5,work:6.2,love:7.1,mind:6.2,content:6.3,human:6.7,load:5.3},
+  {date:'2020-04-07',wellbeing:6.6,work:6.5,love:6.8,mind:6.0,content:6.5,human:7.3,load:5.5},
+  {date:'2020-04-14',wellbeing:6.8,work:6.6,love:6.5,mind:6.4,content:6.6,human:7.0,load:5.4},
+  {date:'2020-04-21',wellbeing:6.6,work:6.1,love:6.8,mind:6.2,content:6.8,human:7.2,load:5.4},
+  {date:'2020-04-28',wellbeing:6.5,work:6.2,love:7.1,mind:6.5,content:6.4,human:7.1,load:5.6},
+  {date:'2020-05-05',wellbeing:6.3,work:6.5,love:6.9,mind:6.4,content:6.6,human:6.7,load:5.4},
+  {date:'2020-05-12',wellbeing:6.3,work:6.6,love:7.1,mind:6.5,content:6.4,human:6.8,load:5.7},
+  {date:'2020-05-19',wellbeing:6.8,work:6.1,love:6.8,mind:6.0,content:6.7,human:7.2,load:5.3},
+  {date:'2020-05-26',wellbeing:6.5,work:6.4,love:6.7,mind:6.5,content:6.5,human:6.9,load:5.5},
+  {date:'2020-06-02',wellbeing:6.7,work:6.2,love:6.7,mind:6.6,content:6.6,human:7.0,load:5.5},
+  {date:'2020-06-09',wellbeing:6.3,work:6.2,love:6.7,mind:6.3,content:6.4,human:6.9,load:5.3},
+  {date:'2020-06-16',wellbeing:6.6,work:6.2,love:7.1,mind:6.5,content:6.3,human:6.9,load:5.6},
+  {date:'2020-06-23',wellbeing:6.4,work:6.1,love:7.1,mind:6.3,content:6.5,human:7.2,load:5.7},
+  {date:'2020-06-30',wellbeing:6.4,work:6.1,love:6.8,mind:6.2,content:6.5,human:7.2,load:5.6},
+  {date:'2020-07-07',wellbeing:6.9,work:6.1,love:6.8,mind:6.2,content:6.8,human:6.9,load:5.3},
+  {date:'2020-07-14',wellbeing:6.5,work:6.3,love:6.7,mind:6.1,content:6.8,human:7.0,load:5.7},
+  {date:'2020-07-21',wellbeing:6.6,work:6.1,love:7.2,mind:6.5,content:6.9,human:7.3,load:5.7},
+  {date:'2020-07-28',wellbeing:6.4,work:6.4,love:6.7,mind:6.2,content:6.3,human:7.0,load:5.8},
+  {date:'2020-08-04',wellbeing:6.4,work:6.6,love:6.8,mind:6.2,content:6.9,human:7.3,load:5.6},
+  {date:'2020-08-11',wellbeing:6.7,work:6.2,love:6.7,mind:6.6,content:6.6,human:7.1,load:5.7},
+  {date:'2020-08-18',wellbeing:6.3,work:6.4,love:6.9,mind:6.5,content:6.4,human:7.3,load:5.3},
+  {date:'2020-08-25',wellbeing:6.4,work:6.4,love:7.0,mind:6.1,content:6.4,human:7.3,load:5.4},
+  {date:'2020-09-01',wellbeing:6.6,work:6.5,love:6.8,mind:6.4,content:6.6,human:7.3,load:5.4},
+  {date:'2020-09-08',wellbeing:6.7,work:6.2,love:6.8,mind:6.4,content:6.5,human:6.9,load:5.7},
+  {date:'2020-09-15',wellbeing:6.3,work:6.4,love:7.2,mind:6.6,content:6.3,human:6.9,load:5.4},
+  {date:'2020-09-22',wellbeing:6.8,work:6.6,love:7.1,mind:6.2,content:6.4,human:7.3,load:5.7},
+  {date:'2020-09-29',wellbeing:6.7,work:6.7,love:7.0,mind:6.0,content:6.8,human:6.9,load:5.6},
+  {date:'2020-10-06',wellbeing:6.9,work:6.2,love:6.6,mind:6.1,content:6.6,human:6.9,load:5.6},
+  {date:'2020-10-13',wellbeing:6.7,work:6.2,love:7.0,mind:6.2,content:6.6,human:7.3,load:5.8},
+  {date:'2020-10-20',wellbeing:6.4,work:6.4,love:6.7,mind:6.0,content:6.8,human:7.1,load:5.4},
+  {date:'2020-10-27',wellbeing:6.7,work:6.4,love:6.8,mind:6.0,content:6.4,human:7.3,load:5.8},
+  {date:'2020-11-03',wellbeing:6.6,work:6.6,love:6.9,mind:6.1,content:6.4,human:7.0,load:5.8},
+  {date:'2020-11-10',wellbeing:6.8,work:6.6,love:7.1,mind:6.2,content:6.5,human:6.8,load:5.7},
+  {date:'2020-11-17',wellbeing:6.8,work:6.4,love:7.0,mind:6.1,content:6.9,human:7.3,load:5.8},
+  {date:'2020-11-24',wellbeing:6.8,work:6.7,love:6.6,mind:6.5,content:6.5,human:7.3,load:5.7},
+  {date:'2020-12-01',wellbeing:6.8,work:6.6,love:6.8,mind:6.5,content:6.4,human:7.3,load:5.8},
+  {date:'2020-12-08',wellbeing:6.4,work:6.6,love:6.9,mind:6.2,content:6.8,human:6.9,load:5.3},
+  {date:'2020-12-15',wellbeing:6.4,work:6.3,love:7.1,mind:6.6,content:6.5,human:7.2,load:5.5},
+  {date:'2020-12-22',wellbeing:6.9,work:6.5,love:7.2,mind:6.1,content:6.9,human:6.9,load:5.8},
+  {date:'2020-12-29',wellbeing:6.5,work:6.2,love:6.9,mind:6.5,content:6.5,human:7.1,load:5.6},
+  {date:'2021-01-05',wellbeing:6.6,work:6.5,love:6.8,mind:6.5,content:6.3,human:7.3,load:5.6},
+  {date:'2021-01-12',wellbeing:6.8,work:6.6,love:7.0,mind:6.3,content:6.4,human:7.2,load:5.5},
+  {date:'2021-01-19',wellbeing:6.5,work:6.7,love:7.0,mind:6.3,content:6.5,human:7.0,load:5.5},
+  {date:'2021-01-26',wellbeing:6.5,work:6.2,love:6.9,mind:6.6,content:6.7,human:7.3,load:5.6},
+  {date:'2021-02-02',wellbeing:6.5,work:6.5,love:6.6,mind:6.3,content:6.6,human:7.1,load:5.7},
+  {date:'2021-02-09',wellbeing:6.6,work:6.4,love:6.7,mind:6.4,content:6.9,human:7.3,load:5.4},
+  {date:'2021-02-16',wellbeing:6.4,work:6.5,love:7.0,mind:6.3,content:6.8,human:7.2,load:5.7},
+  {date:'2021-02-23',wellbeing:6.5,work:6.3,love:6.6,mind:6.2,content:6.6,human:7.3,load:5.3},
+  {date:'2021-03-02',wellbeing:6.6,work:6.5,love:6.7,mind:6.5,content:6.7,human:6.9,load:5.7},
+  {date:'2021-03-09',wellbeing:6.3,work:6.6,love:7.1,mind:6.2,content:6.6,human:6.9,load:5.8},
+  {date:'2021-03-16',wellbeing:6.7,work:6.2,love:6.8,mind:6.6,content:6.6,human:7.3,load:5.7},
+  {date:'2021-03-23',wellbeing:6.9,work:6.5,love:7.2,mind:6.6,content:6.7,human:7.2,load:5.6},
+  {date:'2021-03-30',wellbeing:6.9,work:6.5,love:7.2,mind:6.6,content:6.7,human:7.0,load:5.4},
+  {date:'2021-04-06',wellbeing:6.7,work:6.6,love:6.9,mind:6.5,content:6.5,human:6.9,load:5.4},
+  {date:'2021-04-13',wellbeing:6.5,work:6.4,love:7.0,mind:6.2,content:6.5,human:7.2,load:5.7},
+  {date:'2021-04-20',wellbeing:6.4,work:6.4,love:7.0,mind:6.4,content:6.5,human:7.1,load:5.8},
+  {date:'2021-04-27',wellbeing:6.7,work:6.6,love:7.2,mind:6.6,content:6.6,human:6.8,load:5.5},
+  {date:'2021-05-04',wellbeing:6.8,work:6.7,love:7.2,mind:6.4,content:6.8,human:7.1,load:5.6},
+  {date:'2021-05-11',wellbeing:6.5,work:6.3,love:6.9,mind:6.1,content:6.6,human:7.2,load:5.5},
+  {date:'2021-05-18',wellbeing:6.5,work:6.5,love:6.7,mind:6.5,content:6.4,human:7.1,load:5.6},
+  {date:'2021-05-25',wellbeing:6.4,work:6.6,love:6.7,mind:6.4,content:6.4,human:7.0,load:5.4},
+  {date:'2021-06-01',wellbeing:6.6,work:6.7,love:6.9,mind:6.6,content:6.9,human:7.0,load:5.3},
+  {date:'2021-06-08',wellbeing:6.4,work:6.5,love:7.2,mind:6.3,content:6.8,human:7.3,load:5.7},
+  {date:'2021-06-15',wellbeing:6.8,work:6.8,love:6.8,mind:6.2,content:6.5,human:6.9,load:5.7},
+  {date:'2021-06-22',wellbeing:6.7,work:6.3,love:7.1,mind:6.6,content:6.5,human:7.2,load:5.7},
+  {date:'2021-06-29',wellbeing:6.5,work:6.7,love:7.2,mind:6.2,content:6.4,human:7.0,load:5.7},
+  {date:'2021-07-06',wellbeing:7.0,work:6.5,love:7.1,mind:6.2,content:6.8,human:7.2,load:5.4},
+  {date:'2021-07-13',wellbeing:6.9,work:6.7,love:7.0,mind:6.2,content:7.0,human:7.3,load:5.5},
+  {date:'2021-07-20',wellbeing:6.6,work:6.4,love:7.0,mind:6.4,content:6.9,human:7.3,load:5.4},
+  {date:'2021-07-27',wellbeing:7.0,work:6.6,love:7.2,mind:6.6,content:6.7,human:7.3,load:5.9},
+  {date:'2021-08-03',wellbeing:6.6,work:6.7,love:7.0,mind:6.5,content:6.7,human:7.3,load:5.5},
+  {date:'2021-08-10',wellbeing:6.9,work:6.7,love:6.7,mind:6.7,content:6.6,human:7.1,load:5.7},
+  {date:'2021-08-17',wellbeing:6.6,work:6.3,love:7.2,mind:6.3,content:6.5,human:7.3,load:5.5},
+  {date:'2021-08-24',wellbeing:6.9,work:6.7,love:6.8,mind:6.2,content:7.0,human:6.9,load:5.7},
+  {date:'2021-08-31',wellbeing:6.7,work:6.7,love:7.1,mind:6.6,content:6.7,human:7.3,load:5.4},
+  {date:'2021-09-07',wellbeing:6.5,work:6.7,love:6.9,mind:6.5,content:6.7,human:7.2,load:5.6},
+  {date:'2021-09-14',wellbeing:6.9,work:6.4,love:7.1,mind:6.3,content:6.6,human:6.9,load:5.4},
+  {date:'2021-09-21',wellbeing:6.5,work:6.6,love:7.1,mind:6.3,content:6.6,human:7.1,load:5.7},
+  {date:'2021-09-28',wellbeing:7.0,work:6.6,love:6.8,mind:6.2,content:6.6,human:7.0,load:5.4},
+  {date:'2021-10-05',wellbeing:6.4,work:6.6,love:6.8,mind:6.8,content:6.8,human:7.3,load:5.4},
+  {date:'2021-10-12',wellbeing:6.9,work:6.6,love:7.2,mind:6.5,content:6.7,human:7.1,load:5.4},
+  {date:'2021-10-19',wellbeing:6.5,work:6.8,love:7.0,mind:6.7,content:6.7,human:6.9,load:5.7},
+  {date:'2021-10-26',wellbeing:6.5,work:6.4,love:7.0,mind:6.4,content:7.0,human:6.9,load:5.8},
+  {date:'2021-11-02',wellbeing:6.8,work:6.7,love:6.8,mind:6.5,content:6.7,human:7.1,load:5.8},
+  {date:'2021-11-09',wellbeing:7.0,work:6.5,love:7.1,mind:6.6,content:6.9,human:7.4,load:5.4},
+  {date:'2021-11-16',wellbeing:6.6,work:6.7,love:6.8,mind:6.3,content:6.5,human:6.9,load:5.6},
+  {date:'2021-11-23',wellbeing:6.8,work:6.4,love:6.8,mind:6.6,content:6.9,human:7.1,load:5.7},
+  {date:'2021-11-30',wellbeing:7.0,work:6.7,love:7.1,mind:6.6,content:7.0,human:7.1,load:5.6},
+  {date:'2021-12-07',wellbeing:6.8,work:6.8,love:7.2,mind:6.3,content:6.6,human:7.0,load:5.8},
+  {date:'2021-12-14',wellbeing:6.8,work:6.5,love:6.8,mind:6.6,content:6.9,human:7.4,load:5.6},
+  {date:'2021-12-21',wellbeing:6.7,work:6.3,love:6.7,mind:6.5,content:6.7,human:7.0,load:5.4},
+  {date:'2021-12-28',wellbeing:7.0,work:6.8,love:7.1,mind:6.8,content:7.1,human:7.3,load:5.5},
+  {date:'2022-01-04',wellbeing:6.5,work:6.7,love:7.0,mind:6.6,content:7.0,human:7.0,load:5.7},
+  {date:'2022-01-11',wellbeing:6.8,work:6.6,love:6.8,mind:6.4,content:6.7,human:7.3,load:5.8},
+  {date:'2022-01-18',wellbeing:6.7,work:6.7,love:6.9,mind:6.8,content:7.0,human:7.2,load:5.6},
+  {date:'2022-01-25',wellbeing:6.6,work:6.5,love:7.3,mind:6.5,content:6.8,human:7.5,load:5.7},
+  {date:'2022-02-01',wellbeing:6.8,work:6.6,love:6.8,mind:6.5,content:6.9,human:7.2,load:5.8},
+  {date:'2022-02-08',wellbeing:6.6,work:6.6,love:7.3,mind:6.5,content:6.9,human:6.9,load:5.9},
+  {date:'2022-02-15',wellbeing:6.8,work:6.5,love:6.8,mind:6.6,content:6.8,human:6.9,load:5.9},
+  {date:'2022-02-22',wellbeing:7.0,work:6.6,love:6.8,mind:6.8,content:6.8,human:7.3,load:5.6},
+  {date:'2022-03-01',wellbeing:6.6,work:6.8,love:7.3,mind:6.4,content:6.8,human:7.1,load:5.9},
+  {date:'2022-03-08',wellbeing:6.8,work:6.8,love:7.2,mind:6.4,content:7.0,human:7.1,load:5.9},
+  {date:'2022-03-15',wellbeing:6.8,work:6.8,love:6.9,mind:6.4,content:6.8,human:7.5,load:5.6},
+  {date:'2022-03-22',wellbeing:6.6,work:6.6,love:6.9,mind:6.6,content:6.8,human:7.2,load:5.5},
+  {date:'2022-03-29',wellbeing:6.6,work:6.7,love:7.1,mind:6.4,content:7.0,human:6.9,load:5.8},
+  {date:'2022-04-05',wellbeing:6.9,work:6.8,love:7.0,mind:6.7,content:7.0,human:7.5,load:5.6},
+  {date:'2022-04-12',wellbeing:6.5,work:6.6,love:7.1,mind:6.8,content:7.0,human:7.2,load:5.7},
+  {date:'2022-04-19',wellbeing:6.8,work:6.8,love:7.0,mind:6.7,content:6.6,human:7.2,load:5.9},
+  {date:'2022-04-26',wellbeing:6.7,work:6.8,love:7.1,mind:6.8,content:7.0,human:7.4,load:5.6},
+  {date:'2022-05-03',wellbeing:6.7,work:6.8,love:7.2,mind:6.8,content:6.5,human:6.9,load:5.7},
+  {date:'2022-05-10',wellbeing:7.0,work:6.9,love:7.2,mind:6.6,content:6.6,human:7.3,load:5.9},
+  {date:'2022-05-17',wellbeing:6.8,work:6.8,love:7.3,mind:6.3,content:7.0,human:7.1,load:5.6},
+  {date:'2022-05-24',wellbeing:6.6,work:6.7,love:7.1,mind:6.8,content:6.6,human:6.9,load:5.9},
+  {date:'2022-05-31',wellbeing:6.9,work:6.5,love:7.3,mind:6.4,content:6.8,human:7.1,load:5.5},
+  {date:'2022-06-07',wellbeing:6.5,work:6.8,love:7.3,mind:6.7,content:6.6,human:7.2,load:5.6},
+  {date:'2022-06-14',wellbeing:6.9,work:6.7,love:7.0,mind:6.5,content:7.0,human:7.0,load:5.6},
+  {date:'2022-06-21',wellbeing:6.8,work:6.5,love:7.1,mind:6.7,content:7.1,human:7.1,load:5.9},
+  {date:'2022-06-28',wellbeing:6.9,work:6.5,love:7.1,mind:6.7,content:7.0,human:6.9,load:5.7},
+  {date:'2022-07-05',wellbeing:6.8,work:6.9,love:6.9,mind:6.8,content:6.9,human:7.1,load:5.7},
+  {date:'2022-07-12',wellbeing:6.9,work:6.8,love:7.2,mind:6.7,content:7.0,human:7.3,load:5.9},
+  {date:'2022-07-19',wellbeing:6.9,work:6.6,love:7.0,mind:6.7,content:7.0,human:7.0,load:5.5},
+  {date:'2022-07-26',wellbeing:7.0,work:6.5,love:6.8,mind:6.6,content:7.1,human:7.2,load:5.9},
+  {date:'2022-08-02',wellbeing:7.0,work:6.5,love:7.3,mind:6.6,content:7.0,human:7.4,load:5.6},
+  {date:'2022-08-09',wellbeing:6.6,work:7.0,love:6.9,mind:6.9,content:7.1,human:7.4,load:5.9},
+  {date:'2022-08-16',wellbeing:7.1,work:6.9,love:7.0,mind:6.8,content:6.6,human:7.2,load:5.6},
+  {date:'2022-08-23',wellbeing:6.9,work:6.8,love:7.1,mind:6.8,content:7.1,human:7.0,load:5.5},
+  {date:'2022-08-30',wellbeing:6.5,work:6.9,love:7.1,mind:6.9,content:6.7,human:7.0,load:5.9},
+  {date:'2022-09-06',wellbeing:7.1,work:6.6,love:7.0,mind:6.4,content:7.1,human:7.1,load:5.7},
+  {date:'2022-09-13',wellbeing:6.6,work:6.9,love:6.9,mind:6.6,content:7.0,human:7.4,load:5.9},
+  {date:'2022-09-20',wellbeing:6.8,work:6.8,love:6.9,mind:6.6,content:6.6,human:7.2,load:5.6},
+  {date:'2022-09-27',wellbeing:7.1,work:6.4,love:7.0,mind:6.6,content:7.1,human:7.4,load:5.4},
+  {date:'2022-10-04',wellbeing:7.0,work:6.7,love:7.4,mind:6.6,content:6.8,human:7.0,load:5.4},
+  {date:'2022-10-11',wellbeing:7.1,work:6.7,love:7.2,mind:6.7,content:6.9,human:6.9,load:5.8},
+  {date:'2022-10-18',wellbeing:6.7,work:6.5,love:7.1,mind:6.4,content:7.0,human:7.1,load:5.5},
+  {date:'2022-10-25',wellbeing:7.1,work:6.6,love:6.9,mind:6.9,content:6.6,human:7.4,load:5.5},
+  {date:'2022-11-01',wellbeing:6.6,work:6.6,love:6.9,mind:6.8,content:6.6,human:6.9,load:5.9},
+  {date:'2022-11-08',wellbeing:6.7,work:6.6,love:6.9,mind:6.4,content:7.0,human:7.3,load:5.8},
+  {date:'2022-11-15',wellbeing:6.8,work:6.9,love:7.1,mind:6.4,content:6.9,human:7.5,load:5.4},
+  {date:'2022-11-22',wellbeing:7.0,work:6.9,love:7.1,mind:6.7,content:7.2,human:7.0,load:5.7},
+  {date:'2022-11-29',wellbeing:6.8,work:6.8,love:7.1,mind:6.9,content:6.6,human:7.0,load:5.7},
+  {date:'2022-12-06',wellbeing:6.6,work:6.6,love:7.2,mind:6.7,content:6.8,human:7.5,load:5.7},
+  {date:'2022-12-13',wellbeing:6.8,work:6.8,love:6.9,mind:6.8,content:7.1,human:7.3,load:5.8},
+  {date:'2022-12-20',wellbeing:7.0,work:6.6,love:7.1,mind:6.5,content:6.8,human:7.2,load:5.6},
+  {date:'2022-12-27',wellbeing:6.6,work:6.7,love:7.2,mind:6.6,content:6.7,human:7.5,load:5.4},
+  {date:'2023-01-03',wellbeing:7.1,work:6.5,love:6.9,mind:6.8,content:7.1,human:7.3,load:5.7},
+  {date:'2023-01-10',wellbeing:6.9,work:6.6,love:6.9,mind:6.6,content:7.0,human:7.4,load:5.9},
+  {date:'2023-01-17',wellbeing:7.0,work:7.0,love:7.2,mind:6.6,content:7.0,human:7.1,load:5.8},
+  {date:'2023-01-24',wellbeing:6.7,work:6.5,love:7.3,mind:6.6,content:7.1,human:7.3,load:5.9},
+  {date:'2023-01-31',wellbeing:7.1,work:7.0,love:7.3,mind:6.8,content:7.0,human:7.0,load:5.9},
+  {date:'2023-02-07',wellbeing:7.1,work:6.6,love:6.9,mind:6.8,content:6.8,human:7.2,load:5.4},
+  {date:'2023-02-14',wellbeing:7.1,work:6.8,love:7.1,mind:6.5,content:7.0,human:7.0,load:5.8},
+  {date:'2023-02-21',wellbeing:6.7,work:6.7,love:7.0,mind:6.6,content:7.1,human:7.4,load:5.7},
+  {date:'2023-02-28',wellbeing:6.6,work:6.5,love:6.9,mind:6.8,content:7.0,human:7.1,load:5.8},
+  {date:'2023-03-07',wellbeing:6.9,work:6.7,love:7.0,mind:6.9,content:6.7,human:7.2,load:5.6},
+  {date:'2023-03-14',wellbeing:7.0,work:6.8,love:7.2,mind:6.5,content:6.9,human:7.3,load:5.4},
+  {date:'2023-03-21',wellbeing:6.8,work:6.6,love:6.9,mind:6.6,content:6.8,human:7.0,load:5.8},
+  {date:'2023-03-28',wellbeing:6.7,work:6.7,love:7.3,mind:6.7,content:7.1,human:7.5,load:5.4},
+  {date:'2023-04-04',wellbeing:7.1,work:6.5,love:6.8,mind:7.0,content:7.2,human:7.3,load:5.7},
+  {date:'2023-04-11',wellbeing:7.0,work:6.7,love:6.9,mind:6.5,content:6.8,human:7.5,load:5.8},
+  {date:'2023-04-18',wellbeing:7.1,work:7.0,love:6.9,mind:7.0,content:6.8,human:7.3,load:5.7},
+  {date:'2023-04-25',wellbeing:6.9,work:6.7,love:7.0,mind:6.7,content:6.7,human:7.3,load:5.5},
+  {date:'2023-05-02',wellbeing:6.9,work:7.0,love:7.1,mind:6.9,content:7.1,human:7.5,load:5.5},
+  {date:'2023-05-09',wellbeing:6.7,work:6.6,love:7.2,mind:6.9,content:7.0,human:7.1,load:5.9},
+  {date:'2023-05-16',wellbeing:6.9,work:6.9,love:7.3,mind:6.7,content:7.2,human:7.3,load:5.8},
+  {date:'2023-05-23',wellbeing:7.0,work:7.0,love:7.2,mind:6.6,content:6.7,human:7.2,load:5.6},
+  {date:'2023-05-30',wellbeing:6.8,work:6.5,love:7.2,mind:6.7,content:6.9,human:7.0,load:5.9},
+  {date:'2023-06-06',wellbeing:6.7,work:7.0,love:7.4,mind:6.8,content:7.0,human:7.3,load:5.7},
+  {date:'2023-06-13',wellbeing:7.1,work:7.0,love:7.1,mind:7.0,content:7.1,human:7.2,load:5.7},
+  {date:'2023-06-20',wellbeing:6.7,work:6.5,love:6.9,mind:7.0,content:6.9,human:7.4,load:5.7},
+  {date:'2023-06-27',wellbeing:6.7,work:6.7,love:7.1,mind:6.7,content:7.0,human:7.1,load:5.6},
+  {date:'2023-07-04',wellbeing:6.8,work:6.8,love:7.1,mind:6.8,content:7.1,human:7.4,load:5.5},
+  {date:'2023-07-11',wellbeing:6.7,work:6.9,love:7.0,mind:6.9,content:7.1,human:7.5,load:5.9},
+  {date:'2023-07-18',wellbeing:6.8,work:6.9,love:7.0,mind:6.7,content:7.3,human:7.4,load:5.7},
+  {date:'2023-07-25',wellbeing:7.0,work:7.1,love:7.1,mind:6.7,content:7.2,human:7.5,load:5.8},
+  {date:'2023-08-01',wellbeing:7.1,work:7.0,love:7.3,mind:6.8,content:7.1,human:7.3,load:5.6},
+  {date:'2023-08-08',wellbeing:6.9,work:6.6,love:7.0,mind:7.1,content:7.0,human:7.1,load:5.5},
+  {date:'2023-08-15',wellbeing:6.7,work:7.0,love:6.9,mind:7.0,content:7.2,human:7.5,load:5.4},
+  {date:'2023-08-22',wellbeing:6.9,work:7.0,love:7.0,mind:6.7,content:6.8,human:7.5,load:5.9},
+  {date:'2023-08-29',wellbeing:7.1,work:6.6,love:7.1,mind:6.8,content:7.1,human:7.1,load:5.7},
+  {date:'2023-09-05',wellbeing:6.8,work:7.0,love:7.2,mind:6.8,content:6.9,human:7.5,load:5.7},
+  {date:'2023-09-12',wellbeing:7.2,work:6.8,love:7.5,mind:7.1,content:7.0,human:7.2,load:5.7},
+  {date:'2023-09-19',wellbeing:7.0,work:7.1,love:7.4,mind:7.0,content:6.8,human:7.2,load:5.8},
+  {date:'2023-09-26',wellbeing:7.2,work:6.9,love:6.9,mind:7.0,content:7.2,human:7.2,load:5.9},
+  {date:'2023-10-03',wellbeing:6.8,work:7.1,love:7.0,mind:6.8,content:7.3,human:7.1,load:5.7},
+  {date:'2023-10-10',wellbeing:6.9,work:6.6,love:6.9,mind:6.8,content:6.9,human:7.6,load:5.7},
+  {date:'2023-10-17',wellbeing:6.7,work:7.1,love:7.4,mind:6.9,content:7.2,human:7.1,load:5.6},
+  {date:'2023-10-24',wellbeing:7.2,work:7.0,love:7.0,mind:7.0,content:7.0,human:7.0,load:5.5},
+  {date:'2023-10-31',wellbeing:6.8,work:7.1,love:7.2,mind:7.0,content:7.0,human:7.1,load:5.6},
+  {date:'2023-11-07',wellbeing:6.9,work:6.6,love:7.2,mind:7.0,content:7.0,human:7.1,load:6.0},
+  {date:'2023-11-14',wellbeing:7.0,work:6.6,love:7.2,mind:6.7,content:6.8,human:7.3,load:5.8},
+  {date:'2023-11-21',wellbeing:6.8,work:6.8,love:7.3,mind:6.6,content:7.3,human:7.1,load:5.8},
+  {date:'2023-11-28',wellbeing:7.0,work:7.2,love:7.2,mind:6.8,content:7.0,human:7.4,load:6.0},
+  {date:'2023-12-05',wellbeing:6.8,work:6.6,love:7.4,mind:6.8,content:7.2,human:7.4,load:5.9},
+  {date:'2023-12-12',wellbeing:7.1,work:6.8,love:6.9,mind:6.9,content:7.2,human:7.1,load:5.9},
+  {date:'2023-12-19',wellbeing:7.0,work:7.0,love:7.3,mind:7.0,content:6.8,human:7.5,load:5.7},
+  {date:'2023-12-26',wellbeing:6.9,work:6.6,love:7.0,mind:6.6,content:7.3,human:7.3,load:6.0},
+  {date:'2024-01-02',wellbeing:7.0,work:6.7,love:7.4,mind:6.7,content:7.0,human:7.5,load:6.0},
+  {date:'2024-01-09',wellbeing:6.9,work:6.7,love:7.1,mind:7.1,content:7.2,human:7.6,load:5.7},
+  {date:'2024-01-16',wellbeing:7.3,work:6.9,love:7.2,mind:7.1,content:7.1,human:7.5,load:5.9},
+  {date:'2024-01-23',wellbeing:6.8,work:7.0,love:7.4,mind:6.9,content:6.9,human:7.1,load:5.8},
+  {date:'2024-01-30',wellbeing:6.9,work:7.0,love:7.2,mind:7.0,content:7.0,human:7.1,load:6.0},
+  {date:'2024-02-06',wellbeing:6.9,work:7.2,love:7.1,mind:7.2,content:7.3,human:7.1,load:5.8},
+  {date:'2024-02-13',wellbeing:6.9,work:7.1,love:7.3,mind:7.2,content:6.8,human:7.4,load:5.9},
+  {date:'2024-02-20',wellbeing:6.7,work:6.6,love:7.4,mind:6.8,content:7.0,human:7.4,load:5.8},
+  {date:'2024-02-27',wellbeing:7.1,work:7.2,love:7.2,mind:7.0,content:7.1,human:7.4,load:5.7},
+  {date:'2024-03-05',wellbeing:7.1,work:6.8,love:7.0,mind:7.0,content:7.1,human:7.3,load:5.8},
+  {date:'2024-03-12',wellbeing:6.9,work:6.8,love:7.2,mind:7.2,content:6.9,human:7.6,load:5.8},
+  {date:'2024-03-19',wellbeing:6.8,work:7.1,love:7.2,mind:7.1,content:7.0,human:7.1,load:5.9},
+  {date:'2024-03-26',wellbeing:7.2,work:6.8,love:7.1,mind:6.6,content:7.1,human:7.6,load:6.0},
+  {date:'2024-04-02',wellbeing:7.2,work:7.2,love:7.3,mind:7.1,content:7.1,human:7.1,load:5.6},
+  {date:'2024-04-09',wellbeing:6.8,work:7.1,love:7.0,mind:6.9,content:7.0,human:7.5,load:5.8},
+  {date:'2024-04-16',wellbeing:7.1,work:6.7,love:7.1,mind:7.2,content:7.2,human:7.4,load:5.9},
+  {date:'2024-04-23',wellbeing:7.2,work:6.7,love:7.5,mind:7.0,content:7.1,human:7.5,load:5.7},
+  {date:'2024-04-30',wellbeing:7.3,work:7.1,love:7.3,mind:6.7,content:7.4,human:7.3,load:6.0},
+  {date:'2024-05-07',wellbeing:6.8,work:6.7,love:7.0,mind:6.7,content:7.0,human:7.5,load:5.7},
+  {date:'2024-05-14',wellbeing:7.3,work:7.2,love:7.5,mind:6.8,content:7.2,human:7.4,load:5.5},
+  {date:'2024-05-21',wellbeing:6.9,work:7.0,love:7.3,mind:6.7,content:7.4,human:7.2,load:5.9},
+  {date:'2024-05-28',wellbeing:7.2,work:7.0,love:7.5,mind:7.0,content:7.3,human:7.1,load:5.5},
+  {date:'2024-06-04',wellbeing:7.1,work:7.0,love:7.4,mind:7.1,content:7.0,human:7.5,load:5.8},
+  {date:'2024-06-11',wellbeing:7.1,work:6.8,love:7.5,mind:6.9,content:7.3,human:7.5,load:5.7},
+  {date:'2024-06-18',wellbeing:6.8,work:6.7,love:7.2,mind:6.9,content:6.9,human:7.4,load:5.7},
+  {date:'2024-06-25',wellbeing:7.2,work:7.1,love:7.5,mind:7.2,content:6.9,human:7.3,load:5.8},
+  {date:'2024-07-02',wellbeing:7.0,work:6.9,love:7.1,mind:6.8,content:6.9,human:7.2,load:5.7},
+  {date:'2024-07-09',wellbeing:7.1,work:6.8,love:7.5,mind:6.7,content:7.0,human:7.4,load:5.7},
+  {date:'2024-07-16',wellbeing:7.2,work:7.0,love:7.3,mind:7.0,content:7.0,human:7.1,load:6.1},
+  {date:'2024-07-23',wellbeing:7.1,work:7.2,love:7.1,mind:6.9,content:6.8,human:7.4,load:6.0},
+  {date:'2024-07-30',wellbeing:7.2,work:6.9,love:7.3,mind:7.2,content:7.1,human:7.6,load:5.9},
+  {date:'2024-08-06',wellbeing:7.2,work:6.9,love:7.2,mind:7.0,content:6.9,human:7.4,load:5.5},
+  {date:'2024-08-13',wellbeing:7.1,work:7.1,love:7.1,mind:7.3,content:7.2,human:7.2,load:6.1},
+  {date:'2024-08-20',wellbeing:7.0,work:7.2,love:7.2,mind:7.2,content:7.3,human:7.2,load:5.8},
+  {date:'2024-08-27',wellbeing:7.1,work:6.7,love:7.1,mind:6.9,content:7.1,human:7.4,load:5.9},
+  {date:'2024-09-03',wellbeing:7.1,work:6.9,love:7.4,mind:6.8,content:7.4,human:7.5,load:5.7},
+  {date:'2024-09-10',wellbeing:7.0,work:7.2,love:7.3,mind:7.1,content:7.0,human:7.6,load:5.7},
+  {date:'2024-09-17',wellbeing:7.2,work:7.3,love:7.3,mind:7.2,content:7.3,human:7.5,load:5.5},
+  {date:'2024-09-24',wellbeing:7.1,work:7.3,love:7.5,mind:7.2,content:7.2,human:7.5,load:5.8},
+  {date:'2024-10-01',wellbeing:6.9,work:7.1,love:7.4,mind:7.2,content:6.9,human:7.5,load:5.5},
+  {date:'2024-10-08',wellbeing:7.4,work:6.8,love:7.0,mind:6.9,content:6.9,human:7.5,load:5.7},
+  {date:'2024-10-15',wellbeing:7.3,work:7.2,love:7.5,mind:7.1,content:6.9,human:7.2,load:5.6},
+  {date:'2024-10-22',wellbeing:7.0,work:7.1,love:7.3,mind:6.9,content:7.0,human:7.6,load:5.7},
+  {date:'2024-10-29',wellbeing:7.0,work:7.2,love:7.4,mind:7.1,content:7.3,human:7.5,load:5.6},
+  {date:'2024-11-05',wellbeing:7.0,work:7.0,love:7.1,mind:7.3,content:7.0,human:7.3,load:5.6},
+  {date:'2024-11-12',wellbeing:7.2,work:6.9,love:7.2,mind:7.3,content:7.3,human:7.3,load:5.6},
+  {date:'2024-11-19',wellbeing:7.2,work:6.9,love:7.6,mind:7.2,content:7.4,human:7.6,load:5.7},
+  {date:'2024-11-26',wellbeing:7.0,work:7.1,love:7.2,mind:7.0,content:7.0,human:7.4,load:5.6},
+  {date:'2024-12-03',wellbeing:7.1,work:7.3,love:7.4,mind:6.8,content:7.2,human:7.5,load:5.7},
+  {date:'2024-12-10',wellbeing:7.2,work:7.0,love:7.4,mind:6.8,content:7.1,human:7.5,load:5.6},
+  {date:'2024-12-17',wellbeing:7.3,work:6.7,love:7.3,mind:7.3,content:7.1,human:7.7,load:6.0},
+  {date:'2024-12-24',wellbeing:7.1,work:6.8,love:7.6,mind:6.9,content:7.3,human:7.7,load:5.6}
+].map(d=>({...d,_date:new Date(d.date)}));
+const dpr=window.devicePixelRatio||1;
+
+function groupData(rows,gran){
+  // gran: 'auto'|'raw'|'month'|'half'|'year'
+  if(gran==='raw')return rows;
+  const n=rows.length;
+  let keyFn;
+  if(gran==='month')      keyFn=d=>d.date.slice(0,7);
+  else if(gran==='half')  keyFn=d=>{const m=parseInt(d.date.slice(5,7));return d.date.slice(0,4)+'-'+(m<=6?'H1':'H2');};
+  else if(gran==='year')  keyFn=d=>d.date.slice(0,4);
+  else return rows;
+  const map=new Map();
+  rows.forEach(d=>{map.set(keyFn(d),d);});
+  return Array.from(map.values());
+}
+function filterData(type,n,gran){
+  gran=gran||'raw';
+  let rows;
+  if(type==='count'){
+    rows=ALL.slice(-parseInt(n));
+    if(gran==='raw')return rows;
+  } else if(type==='months'){
+    const l=ALL[ALL.length-1]._date,cc=new Date(l);cc.setMonth(cc.getMonth()-parseInt(n));
+    rows=ALL.filter(d=>d._date>=cc);if(!rows.length)rows=ALL.slice();
+  } else {
+    rows=ALL.slice();
+  }
+  return groupData(rows,gran);
+}
+function countForFilter(type,n){return filterData(type,n).length;}
+
+const D6_MONTHLY=[
+  {date:'2020-01-07',wellbeing:6.6,work:6.0,love:6.7,mind:6.0,content:6.6,human:7.1,load:5.7},
+  {date:'2020-02-06',wellbeing:6.3,work:6.3,love:6.5,mind:6.0,content:6.5,human:6.7,load:5.3},
+  {date:'2020-03-07',wellbeing:6.6,work:6.3,love:6.6,mind:6.3,content:6.7,human:6.7,load:5.7},
+  {date:'2020-04-06',wellbeing:6.6,work:6.2,love:6.6,mind:6.5,content:6.4,human:6.8,load:5.3},
+  {date:'2020-05-06',wellbeing:6.7,work:6.4,love:7.0,mind:6.3,content:6.5,human:7.3,load:5.4},
+  {date:'2020-06-05',wellbeing:6.5,work:6.5,love:6.9,mind:6.4,content:6.6,human:7.1,load:5.2},
+  {date:'2020-07-05',wellbeing:6.3,work:6.2,love:6.6,mind:6.0,content:6.3,human:6.9,load:5.6},
+  {date:'2020-08-04',wellbeing:6.4,work:6.2,love:6.6,mind:6.1,content:6.8,human:7.1,load:5.6},
+  {date:'2020-09-03',wellbeing:6.3,work:6.4,love:6.6,mind:6.1,content:6.8,human:7.1,load:5.5},
+  {date:'2020-10-03',wellbeing:6.6,work:6.5,love:7.0,mind:6.0,content:6.2,human:6.9,load:5.4},
+  {date:'2020-11-02',wellbeing:6.3,work:6.6,love:7.0,mind:6.1,content:6.6,human:6.9,load:5.8},
+  {date:'2020-12-02',wellbeing:6.5,work:6.2,love:6.7,mind:6.3,content:6.4,human:7.1,load:5.7},
+  {date:'2021-01-01',wellbeing:6.5,work:6.1,love:7.1,mind:6.2,content:6.3,human:6.7,load:5.3},
+  {date:'2021-01-31',wellbeing:6.6,work:6.5,love:6.8,mind:6.0,content:6.4,human:7.3,load:5.5},
+  {date:'2021-03-02',wellbeing:6.8,work:6.5,love:6.5,mind:6.4,content:6.6,human:7.0,load:5.4},
+  {date:'2021-04-01',wellbeing:6.6,work:6.1,love:6.8,mind:6.2,content:6.8,human:7.2,load:5.4},
+  {date:'2021-05-01',wellbeing:6.5,work:6.1,love:7.1,mind:6.4,content:6.4,human:7.1,load:5.6},
+  {date:'2021-05-31',wellbeing:6.3,work:6.5,love:6.8,mind:6.4,content:6.5,human:6.7,load:5.4},
+  {date:'2021-06-30',wellbeing:6.2,work:6.6,love:7.0,mind:6.4,content:6.4,human:6.7,load:5.7},
+  {date:'2021-07-30',wellbeing:6.8,work:6.1,love:6.8,mind:6.0,content:6.7,human:7.2,load:5.3},
+  {date:'2021-08-29',wellbeing:6.5,work:6.4,love:6.7,mind:6.5,content:6.5,human:6.8,load:5.5},
+  {date:'2021-09-28',wellbeing:6.7,work:6.1,love:6.7,mind:6.5,content:6.6,human:7.0,load:5.5},
+  {date:'2021-10-28',wellbeing:6.3,work:6.2,love:6.7,mind:6.3,content:6.4,human:6.8,load:5.3},
+  {date:'2021-11-27',wellbeing:6.6,work:6.2,love:7.1,mind:6.4,content:6.3,human:6.9,load:5.6},
+  {date:'2021-12-27',wellbeing:6.4,work:6.1,love:7.1,mind:6.3,content:6.5,human:7.2,load:5.7},
+  {date:'2022-01-26',wellbeing:6.3,work:6.1,love:6.8,mind:6.2,content:6.5,human:7.2,load:5.6},
+  {date:'2022-02-25',wellbeing:6.8,work:6.1,love:6.8,mind:6.1,content:6.7,human:6.9,load:5.3},
+  {date:'2022-03-27',wellbeing:6.5,work:6.3,love:6.7,mind:6.1,content:6.8,human:7.0,load:5.7},
+  {date:'2022-04-26',wellbeing:6.6,work:6.1,love:7.1,mind:6.4,content:6.8,human:7.3,load:5.7},
+  {date:'2022-05-26',wellbeing:6.3,work:6.3,love:6.7,mind:6.2,content:6.3,human:6.9,load:5.8},
+  {date:'2022-06-25',wellbeing:6.4,work:6.5,love:6.8,mind:6.2,content:6.8,human:7.3,load:5.5},
+  {date:'2022-07-25',wellbeing:6.7,work:6.1,love:6.7,mind:6.5,content:6.6,human:7.0,load:5.7},
+  {date:'2022-08-24',wellbeing:6.3,work:6.4,love:6.8,mind:6.5,content:6.3,human:7.3,load:5.3},
+  {date:'2022-09-23',wellbeing:6.3,work:6.4,love:6.9,mind:6.1,content:6.3,human:7.3,load:5.4},
+  {date:'2022-10-23',wellbeing:6.6,work:6.4,love:6.8,mind:6.3,content:6.6,human:7.3,load:5.3},
+  {date:'2022-11-22',wellbeing:6.7,work:6.2,love:6.8,mind:6.3,content:6.4,human:6.9,load:5.7},
+  {date:'2022-12-22',wellbeing:6.3,work:6.3,love:7.1,mind:6.5,content:6.3,human:6.9,load:5.4},
+  {date:'2023-01-21',wellbeing:6.8,work:6.6,love:7.1,mind:6.2,content:6.3,human:7.2,load:5.6},
+  {date:'2023-02-20',wellbeing:6.6,work:6.6,love:6.9,mind:6.0,content:6.7,human:6.9,load:5.6},
+  {date:'2023-03-22',wellbeing:6.8,work:6.1,love:6.6,mind:6.0,content:6.6,human:6.9,load:5.6},
+  {date:'2023-04-21',wellbeing:6.7,work:6.2,love:6.9,mind:6.1,content:6.5,human:7.3,load:5.7},
+  {date:'2023-05-21',wellbeing:6.3,work:6.3,love:6.7,mind:6.0,content:6.7,human:7.1,load:5.4},
+  {date:'2023-06-20',wellbeing:6.7,work:6.4,love:6.8,mind:6.0,content:6.3,human:7.3,load:5.8},
+  {date:'2023-07-20',wellbeing:6.6,work:6.6,love:6.9,mind:6.0,content:6.3,human:6.9,load:5.8},
+  {date:'2023-08-19',wellbeing:6.7,work:6.6,love:7.1,mind:6.1,content:6.4,human:6.8,load:5.7},
+  {date:'2023-09-18',wellbeing:6.8,work:6.3,love:6.9,mind:6.1,content:6.8,human:7.2,load:5.8},
+  {date:'2023-10-18',wellbeing:6.7,work:6.6,love:6.6,mind:6.4,content:6.4,human:7.3,load:5.7},
+  {date:'2023-11-17',wellbeing:6.8,work:6.5,love:6.7,mind:6.4,content:6.3,human:7.3,load:5.7},
+  {date:'2023-12-17',wellbeing:6.4,work:6.5,love:6.8,mind:6.1,content:6.7,human:6.9,load:5.2},
+  {date:'2024-01-16',wellbeing:6.4,work:6.3,love:7.1,mind:6.5,content:6.4,human:7.1,load:5.5},
+  {date:'2024-02-15',wellbeing:6.8,work:6.4,love:7.1,mind:6.0,content:6.8,human:6.8,load:5.8},
+  {date:'2024-03-16',wellbeing:6.4,work:6.1,love:6.8,mind:6.4,content:6.4,human:7.1,load:5.5},
+  {date:'2024-04-15',wellbeing:6.5,work:6.4,love:6.7,mind:6.4,content:6.3,human:7.3,load:5.5},
+  {date:'2024-05-15',wellbeing:6.7,work:6.5,love:6.9,mind:6.2,content:6.3,human:7.1,load:5.4},
+  {date:'2024-06-14',wellbeing:6.4,work:6.6,love:7.0,mind:6.2,content:6.4,human:7.0,load:5.5},
+  {date:'2024-07-14',wellbeing:6.4,work:6.1,love:6.8,mind:6.5,content:6.7,human:7.3,load:5.6},
+  {date:'2024-08-13',wellbeing:6.4,work:6.4,love:6.5,mind:6.1,content:6.5,human:7.1,load:5.6},
+  {date:'2024-09-12',wellbeing:6.5,work:6.3,love:6.7,mind:6.3,content:6.8,human:7.2,load:5.3},
+  {date:'2024-10-12',wellbeing:6.3,work:6.4,love:6.9,mind:6.2,content:6.8,human:7.2,load:5.6},
+  {date:'2024-11-11',wellbeing:6.4,work:6.2,love:6.6,mind:6.1,content:6.5,human:7.2,load:5.3}
+].map(d=>({...d,_date:new Date(d.date)}));
+const D6_WEEKLY=[
+  {date:'2020-01-07',wellbeing:6.4,work:6.4,love:6.6,mind:6.3,content:6.5,human:6.8,load:5.6},
+  {date:'2020-01-14',wellbeing:6.2,work:6.5,love:7.0,mind:6.0,content:6.5,human:6.8,load:5.8},
+  {date:'2020-01-21',wellbeing:6.5,work:6.0,love:6.6,mind:6.4,content:6.5,human:7.2,load:5.6},
+  {date:'2020-01-28',wellbeing:6.8,work:6.4,love:7.1,mind:6.4,content:6.6,human:7.1,load:5.5},
+  {date:'2020-02-04',wellbeing:6.7,work:6.3,love:7.0,mind:6.3,content:6.5,human:6.9,load:5.3},
+  {date:'2020-02-11',wellbeing:6.6,work:6.5,love:6.8,mind:6.3,content:6.4,human:6.7,load:5.4},
+  {date:'2020-02-18',wellbeing:6.4,work:6.2,love:6.8,mind:6.0,content:6.3,human:7.1,load:5.6},
+  {date:'2020-02-25',wellbeing:6.2,work:6.2,love:6.8,mind:6.2,content:6.3,human:7.0,load:5.7},
+  {date:'2020-03-03',wellbeing:6.6,work:6.4,love:7.0,mind:6.4,content:6.4,human:6.7,load:5.4},
+  {date:'2020-03-10',wellbeing:6.7,work:6.5,love:7.1,mind:6.2,content:6.7,human:7.0,load:5.6},
+  {date:'2020-03-17',wellbeing:6.3,work:6.1,love:6.8,mind:5.9,content:6.4,human:7.1,load:5.4},
+  {date:'2020-03-24',wellbeing:6.3,work:6.3,love:6.6,mind:6.3,content:6.2,human:6.9,load:5.5},
+  {date:'2020-03-31',wellbeing:6.2,work:6.4,love:6.6,mind:6.2,content:6.2,human:6.9,load:5.3},
+  {date:'2020-04-07',wellbeing:6.4,work:6.5,love:6.7,mind:6.4,content:6.7,human:6.9,load:5.3},
+  {date:'2020-04-14',wellbeing:6.2,work:6.3,love:7.1,mind:6.1,content:6.6,human:7.2,load:5.6},
+  {date:'2020-04-21',wellbeing:6.7,work:6.6,love:6.6,mind:5.9,content:6.3,human:6.8,load:5.6},
+  {date:'2020-04-28',wellbeing:6.5,work:6.1,love:6.9,mind:6.4,content:6.3,human:7.1,load:5.7},
+  {date:'2020-05-05',wellbeing:6.3,work:6.5,love:7.1,mind:6.0,content:6.2,human:6.9,load:5.6},
+  {date:'2020-05-12',wellbeing:6.8,work:6.2,love:6.9,mind:6.0,content:6.6,human:7.1,load:5.3},
+  {date:'2020-05-19',wellbeing:6.7,work:6.5,love:6.9,mind:6.0,content:6.8,human:7.2,load:5.4},
+  {date:'2020-05-26',wellbeing:6.5,work:6.2,love:6.8,mind:6.1,content:6.7,human:7.2,load:5.3},
+  {date:'2020-06-02',wellbeing:6.8,work:6.4,love:7.0,mind:6.3,content:6.5,human:7.1,load:5.8},
+  {date:'2020-06-09',wellbeing:6.4,work:6.5,love:6.8,mind:6.2,content:6.5,human:7.1,load:5.4},
+  {date:'2020-06-16',wellbeing:6.7,work:6.5,love:6.6,mind:6.4,content:6.4,human:7.0,load:5.6},
+  {date:'2020-06-23',wellbeing:6.4,work:6.0,love:7.0,mind:6.0,content:6.3,human:7.2,load:5.4},
+  {date:'2020-06-30',wellbeing:6.7,work:6.4,love:6.7,mind:5.9,content:6.8,human:6.8,load:5.6},
+  {date:'2020-07-07',wellbeing:6.5,work:6.5,love:6.9,mind:6.3,content:6.5,human:7.2,load:5.3},
+  {date:'2020-07-14',wellbeing:6.3,work:6.4,love:6.7,mind:6.3,content:6.5,human:7.0,load:5.5},
+  {date:'2020-07-21',wellbeing:6.7,work:6.2,love:6.9,mind:6.1,content:6.4,human:6.8,load:5.3},
+  {date:'2020-07-28',wellbeing:6.3,work:6.3,love:7.0,mind:6.0,content:6.3,human:7.0,load:5.6},
+  {date:'2020-08-04',wellbeing:6.8,work:6.3,love:6.7,mind:6.0,content:6.3,human:6.8,load:5.3},
+  {date:'2020-08-11',wellbeing:6.2,work:6.3,love:6.7,mind:6.5,content:6.5,human:7.1,load:5.3},
+  {date:'2020-08-18',wellbeing:6.7,work:6.3,love:7.0,mind:6.3,content:6.5,human:7.0,load:5.3},
+  {date:'2020-08-25',wellbeing:6.2,work:6.6,love:6.8,mind:6.4,content:6.4,human:6.7,load:5.6},
+  {date:'2020-09-01',wellbeing:6.2,work:6.1,love:6.8,mind:6.1,content:6.8,human:6.8,load:5.7},
+  {date:'2020-09-08',wellbeing:6.6,work:6.5,love:6.6,mind:6.2,content:6.5,human:7.0,load:5.7},
+  {date:'2020-09-15',wellbeing:6.8,work:6.2,love:6.9,mind:6.3,content:6.7,human:7.3,load:5.3},
+  {date:'2020-09-22',wellbeing:6.3,work:6.4,love:6.6,mind:6.0,content:6.3,human:6.7,load:5.5},
+  {date:'2020-09-29',wellbeing:6.6,work:6.2,love:6.6,mind:6.3,content:6.6,human:7.0,load:5.6},
+  {date:'2020-10-06',wellbeing:6.8,work:6.5,love:6.9,mind:6.3,content:6.8,human:7.0,load:5.5},
+  {date:'2020-10-13',wellbeing:6.6,work:6.6,love:7.0,mind:6.0,content:6.3,human:6.9,load:5.7},
+  {date:'2020-10-20',wellbeing:6.6,work:6.2,love:6.6,mind:6.3,content:6.6,human:7.3,load:5.5},
+  {date:'2020-10-27',wellbeing:6.5,work:6.1,love:6.5,mind:6.2,content:6.4,human:6.9,load:5.3},
+  {date:'2020-11-03',wellbeing:6.8,work:6.5,love:6.9,mind:6.5,content:6.8,human:7.1,load:5.4},
+  {date:'2020-11-10',wellbeing:6.2,work:6.5,love:6.8,mind:6.3,content:6.8,human:6.8,load:5.6},
+  {date:'2020-11-17',wellbeing:6.6,work:6.3,love:6.6,mind:6.1,content:6.4,human:7.1,load:5.7},
+  {date:'2020-11-24',wellbeing:6.4,work:6.4,love:6.7,mind:6.5,content:6.7,human:7.0,load:5.5},
+  {date:'2020-12-01',wellbeing:6.4,work:6.2,love:7.1,mind:6.2,content:6.5,human:7.3,load:5.6},
+  {date:'2020-12-08',wellbeing:6.5,work:6.3,love:6.6,mind:6.1,content:6.7,human:7.1,load:5.7},
+  {date:'2020-12-15',wellbeing:6.3,work:6.3,love:7.1,mind:6.2,content:6.6,human:6.8,load:5.8},
+  {date:'2020-12-22',wellbeing:6.6,work:6.2,love:6.6,mind:6.2,content:6.5,human:6.8,load:5.8},
+  {date:'2020-12-29',wellbeing:6.8,work:6.3,love:6.6,mind:6.4,content:6.5,human:7.1,load:5.5},
+  {date:'2021-01-05',wellbeing:6.4,work:6.5,love:7.1,mind:6.1,content:6.5,human:6.9,load:5.8},
+  {date:'2021-01-12',wellbeing:6.5,work:6.5,love:7.0,mind:6.1,content:6.7,human:7.0,load:5.8},
+  {date:'2021-01-19',wellbeing:6.5,work:6.5,love:6.7,mind:6.1,content:6.6,human:7.3,load:5.5},
+  {date:'2021-01-26',wellbeing:6.3,work:6.3,love:6.7,mind:6.2,content:6.5,human:7.0,load:5.4},
+  {date:'2021-02-02',wellbeing:6.3,work:6.4,love:6.9,mind:6.1,content:6.7,human:6.7,load:5.7},
+  {date:'2021-02-09',wellbeing:6.6,work:6.5,love:6.7,mind:6.3,content:6.7,human:7.3,load:5.5},
+  {date:'2021-02-16',wellbeing:6.2,work:6.3,love:6.9,mind:6.4,content:6.7,human:7.0,load:5.5},
+  {date:'2021-02-23',wellbeing:6.5,work:6.4,love:6.8,mind:6.3,content:6.3,human:7.0,load:5.8},
+  {date:'2021-03-02',wellbeing:6.4,work:6.4,love:6.9,mind:6.4,content:6.7,human:7.2,load:5.4},
+  {date:'2021-03-09',wellbeing:6.4,work:6.4,love:7.0,mind:6.4,content:6.2,human:6.8,load:5.6},
+  {date:'2021-03-16',wellbeing:6.8,work:6.6,love:7.0,mind:6.2,content:6.3,human:7.1,load:5.7},
+  {date:'2021-03-23',wellbeing:6.5,work:6.4,love:7.1,mind:5.9,content:6.7,human:6.9,load:5.4},
+  {date:'2021-03-30',wellbeing:6.3,work:6.3,love:6.9,mind:6.4,content:6.3,human:6.8,load:5.7},
+  {date:'2021-04-06',wellbeing:6.6,work:6.2,love:7.1,mind:6.0,content:6.5,human:6.9,load:5.4},
+  {date:'2021-04-13',wellbeing:6.2,work:6.5,love:7.1,mind:6.3,content:6.3,human:7.0,load:5.4},
+  {date:'2021-04-20',wellbeing:6.6,work:6.4,love:6.8,mind:6.1,content:6.7,human:6.8,load:5.4},
+  {date:'2021-04-27',wellbeing:6.5,work:6.2,love:6.9,mind:6.3,content:6.8,human:6.9,load:5.8},
+  {date:'2021-05-04',wellbeing:6.6,work:6.2,love:6.9,mind:6.3,content:6.7,human:6.7,load:5.6},
+  {date:'2021-05-11',wellbeing:6.5,work:6.6,love:6.7,mind:6.4,content:6.6,human:6.9,load:5.6},
+  {date:'2021-05-18',wellbeing:6.6,work:6.4,love:6.9,mind:6.3,content:6.7,human:7.1,load:5.8},
+  {date:'2021-05-25',wellbeing:6.6,work:6.2,love:6.8,mind:6.3,content:6.7,human:6.8,load:5.4},
+  {date:'2021-06-01',wellbeing:6.7,work:6.1,love:6.6,mind:6.2,content:6.8,human:7.0,load:5.8},
+  {date:'2021-06-08',wellbeing:6.7,work:6.2,love:7.0,mind:6.2,content:6.7,human:7.2,load:5.4},
+  {date:'2021-06-15',wellbeing:6.3,work:6.6,love:6.6,mind:6.5,content:6.7,human:7.1,load:5.8},
+  {date:'2021-06-22',wellbeing:6.8,work:6.5,love:6.7,mind:6.4,content:6.2,human:7.0,load:5.5},
+  {date:'2021-06-29',wellbeing:6.6,work:6.4,love:6.9,mind:6.4,content:6.8,human:6.8,load:5.3},
+  {date:'2021-07-06',wellbeing:6.2,work:6.6,love:6.9,mind:6.5,content:6.4,human:6.7,load:5.7},
+  {date:'2021-07-13',wellbeing:6.8,work:6.2,love:6.8,mind:6.0,content:6.8,human:6.9,load:5.5},
+  {date:'2021-07-20',wellbeing:6.3,work:6.6,love:6.6,mind:6.2,content:6.6,human:7.2,load:5.8},
+  {date:'2021-07-27',wellbeing:6.5,work:6.5,love:6.6,mind:6.2,content:6.3,human:7.0,load:5.5},
+  {date:'2021-08-03',wellbeing:6.8,work:6.0,love:6.7,mind:6.2,content:6.8,human:7.2,load:5.3},
+  {date:'2021-08-10',wellbeing:6.6,work:6.3,love:7.1,mind:6.1,content:6.5,human:6.8,load:5.3},
+  {date:'2021-08-17',wellbeing:6.7,work:6.3,love:6.9,mind:6.3,content:6.6,human:6.7,load:5.7},
+  {date:'2021-08-24',wellbeing:6.4,work:6.1,love:6.9,mind:6.0,content:6.7,human:6.8,load:5.3},
+  {date:'2021-08-31',wellbeing:6.7,work:6.2,love:6.6,mind:6.5,content:6.2,human:7.2,load:5.3},
+  {date:'2021-09-07',wellbeing:6.3,work:6.2,love:6.6,mind:6.3,content:6.2,human:6.7,load:5.7},
+  {date:'2021-09-14',wellbeing:6.4,work:6.2,love:6.6,mind:6.0,content:6.7,human:7.0,load:5.7},
+  {date:'2021-09-21',wellbeing:6.5,work:6.5,love:6.8,mind:6.0,content:6.5,human:7.3,load:5.2},
+  {date:'2021-09-28',wellbeing:6.7,work:6.5,love:6.8,mind:6.2,content:6.8,human:6.8,load:5.5},
+  {date:'2021-10-05',wellbeing:6.5,work:6.4,love:6.8,mind:6.5,content:6.3,human:6.8,load:5.6},
+  {date:'2021-10-12',wellbeing:6.3,work:6.2,love:6.9,mind:6.3,content:6.4,human:7.3,load:5.5},
+  {date:'2021-10-19',wellbeing:6.5,work:6.4,love:6.6,mind:6.3,content:6.7,human:7.1,load:5.7},
+  {date:'2021-10-26',wellbeing:6.7,work:6.2,love:6.8,mind:6.1,content:6.4,human:7.0,load:5.5},
+  {date:'2021-11-02',wellbeing:6.3,work:6.3,love:6.9,mind:6.2,content:6.3,human:7.3,load:5.3},
+  {date:'2021-11-09',wellbeing:6.7,work:6.1,love:6.6,mind:6.4,content:6.7,human:7.0,load:5.6},
+  {date:'2021-11-16',wellbeing:6.6,work:6.2,love:6.6,mind:6.1,content:6.6,human:7.2,load:5.7},
+  {date:'2021-11-23',wellbeing:6.7,work:6.6,love:6.9,mind:6.1,content:6.6,human:6.8,load:5.6},
+  {date:'2021-11-30',wellbeing:6.4,work:6.1,love:7.0,mind:6.2,content:6.7,human:7.1,load:5.7},
+  {date:'2021-12-07',wellbeing:6.7,work:6.6,love:7.0,mind:6.3,content:6.6,human:6.7,load:5.8},
+  {date:'2021-12-14',wellbeing:6.7,work:6.2,love:6.6,mind:6.4,content:6.4,human:6.9,load:5.2},
+  {date:'2021-12-21',wellbeing:6.7,work:6.4,love:6.8,mind:6.0,content:6.6,human:6.7,load:5.7},
+  {date:'2021-12-28',wellbeing:6.4,work:6.3,love:6.7,mind:6.2,content:6.7,human:7.2,load:5.6},
+  {date:'2022-01-04',wellbeing:6.3,work:6.1,love:6.6,mind:6.3,content:6.6,human:6.9,load:5.6},
+  {date:'2022-01-11',wellbeing:6.5,work:6.3,love:6.7,mind:6.4,content:6.3,human:7.0,load:5.4},
+  {date:'2022-01-18',wellbeing:6.6,work:6.3,love:6.9,mind:6.0,content:6.5,human:7.1,load:5.2},
+  {date:'2022-01-25',wellbeing:6.4,work:6.2,love:6.6,mind:6.1,content:6.4,human:6.7,load:5.7},
+  {date:'2022-02-01',wellbeing:6.3,work:6.3,love:6.9,mind:6.2,content:6.7,human:7.2,load:5.3},
+  {date:'2022-02-08',wellbeing:6.7,work:6.1,love:6.5,mind:6.5,content:6.7,human:7.1,load:5.6},
+  {date:'2022-02-15',wellbeing:6.7,work:6.3,love:6.6,mind:5.9,content:6.4,human:7.2,load:5.6},
+  {date:'2022-02-22',wellbeing:6.7,work:6.6,love:6.6,mind:6.4,content:6.4,human:7.1,load:5.5},
+  {date:'2022-03-01',wellbeing:6.5,work:6.2,love:6.7,mind:6.1,content:6.3,human:7.0,load:5.3},
+  {date:'2022-03-08',wellbeing:6.5,work:6.6,love:6.7,mind:6.4,content:6.7,human:7.2,load:5.4},
+  {date:'2022-03-15',wellbeing:6.3,work:6.1,love:6.9,mind:6.4,content:6.6,human:6.8,load:5.7},
+  {date:'2022-03-22',wellbeing:6.5,work:6.5,love:7.0,mind:6.2,content:6.8,human:7.1,load:5.6},
+  {date:'2022-03-29',wellbeing:6.6,work:6.5,love:6.9,mind:6.0,content:6.3,human:7.0,load:5.4},
+  {date:'2022-04-05',wellbeing:6.4,work:6.1,love:6.8,mind:6.1,content:6.5,human:6.8,load:5.7},
+  {date:'2022-04-12',wellbeing:6.3,work:6.6,love:7.0,mind:6.3,content:6.5,human:7.0,load:5.5},
+  {date:'2022-04-19',wellbeing:6.7,work:6.6,love:6.8,mind:6.4,content:6.6,human:6.9,load:5.5},
+  {date:'2022-04-26',wellbeing:6.3,work:6.1,love:6.6,mind:6.5,content:6.4,human:7.1,load:5.5},
+  {date:'2022-05-03',wellbeing:6.3,work:6.2,love:6.8,mind:6.2,content:6.5,human:6.8,load:5.4},
+  {date:'2022-05-10',wellbeing:6.4,work:6.3,love:6.7,mind:6.3,content:6.7,human:7.1,load:5.3},
+  {date:'2022-05-17',wellbeing:6.3,work:6.4,love:6.7,mind:6.4,content:6.6,human:7.3,load:5.7},
+  {date:'2022-05-24',wellbeing:6.4,work:6.4,love:6.6,mind:6.1,content:6.8,human:7.1,load:5.4},
+  {date:'2022-05-31',wellbeing:6.6,work:6.6,love:6.7,mind:6.2,content:6.7,human:7.2,load:5.6},
+  {date:'2022-06-07',wellbeing:6.7,work:6.5,love:6.9,mind:6.3,content:6.6,human:7.0,load:5.4},
+  {date:'2022-06-14',wellbeing:6.4,work:6.1,love:6.7,mind:6.5,content:6.5,human:6.9,load:5.3},
+  {date:'2022-06-21',wellbeing:6.3,work:6.5,love:6.6,mind:6.4,content:6.7,human:7.2,load:5.2},
+  {date:'2022-06-28',wellbeing:6.4,work:6.5,love:6.6,mind:6.2,content:6.3,human:7.2,load:5.7},
+  {date:'2022-07-05',wellbeing:6.7,work:6.1,love:6.8,mind:6.2,content:6.6,human:6.9,load:5.5},
+  {date:'2022-07-12',wellbeing:6.4,work:6.5,love:6.8,mind:6.3,content:6.4,human:7.2,load:5.5},
+  {date:'2022-07-19',wellbeing:6.7,work:6.3,love:7.1,mind:6.5,content:6.5,human:6.9,load:5.4},
+  {date:'2022-07-26',wellbeing:6.5,work:6.6,love:7.0,mind:6.4,content:6.3,human:6.9,load:5.6},
+  {date:'2022-08-02',wellbeing:6.8,work:6.4,love:6.6,mind:6.4,content:6.7,human:6.9,load:5.7},
+  {date:'2022-08-09',wellbeing:6.4,work:6.6,love:6.6,mind:6.2,content:6.8,human:6.9,load:5.5},
+  {date:'2022-08-16',wellbeing:6.4,work:6.1,love:6.6,mind:6.2,content:6.4,human:7.3,load:5.4},
+  {date:'2022-08-23',wellbeing:6.2,work:6.6,love:7.0,mind:6.3,content:6.7,human:6.8,load:5.4},
+  {date:'2022-08-30',wellbeing:6.7,work:6.5,love:6.6,mind:6.4,content:6.5,human:6.7,load:5.3},
+  {date:'2022-09-06',wellbeing:6.4,work:6.5,love:6.9,mind:6.4,content:6.6,human:6.8,load:5.4},
+  {date:'2022-09-13',wellbeing:6.4,work:6.1,love:6.8,mind:6.4,content:6.5,human:6.8,load:5.8},
+  {date:'2022-09-20',wellbeing:6.6,work:6.0,love:6.8,mind:6.1,content:6.3,human:7.0,load:5.6},
+  {date:'2022-09-27',wellbeing:6.4,work:6.3,love:6.9,mind:6.0,content:6.8,human:6.8,load:5.5},
+  {date:'2022-10-04',wellbeing:6.5,work:6.6,love:6.9,mind:6.2,content:6.5,human:7.1,load:5.8},
+  {date:'2022-10-11',wellbeing:6.4,work:6.0,love:7.0,mind:6.2,content:6.7,human:7.1,load:5.7},
+  {date:'2022-10-18',wellbeing:6.7,work:6.2,love:6.6,mind:6.3,content:6.7,human:6.8,load:5.7},
+  {date:'2022-10-25',wellbeing:6.5,work:6.5,love:6.9,mind:6.4,content:6.3,human:7.2,load:5.5},
+  {date:'2022-11-01',wellbeing:6.4,work:6.1,love:6.6,mind:6.0,content:6.8,human:7.0,load:5.8},
+  {date:'2022-11-08',wellbeing:6.6,work:6.2,love:7.0,mind:6.1,content:6.5,human:7.2,load:5.7},
+  {date:'2022-11-15',wellbeing:6.4,work:6.1,love:6.7,mind:6.5,content:6.7,human:7.3,load:5.4},
+  {date:'2022-11-22',wellbeing:6.8,work:6.3,love:6.8,mind:6.5,content:6.5,human:7.2,load:5.7},
+  {date:'2022-11-29',wellbeing:6.3,work:6.4,love:7.0,mind:6.3,content:6.4,human:6.8,load:5.6},
+  {date:'2022-12-06',wellbeing:6.4,work:6.4,love:6.8,mind:6.4,content:6.4,human:6.7,load:5.7},
+  {date:'2022-12-13',wellbeing:6.4,work:6.6,love:6.7,mind:6.5,content:6.8,human:6.8,load:5.6},
+  {date:'2022-12-20',wellbeing:6.5,work:6.5,love:6.9,mind:6.5,content:6.3,human:7.1,load:5.7},
+  {date:'2022-12-27',wellbeing:6.3,work:6.1,love:7.0,mind:6.2,content:6.5,human:7.1,load:5.6},
+  {date:'2023-01-03',wellbeing:6.6,work:6.6,love:6.8,mind:6.4,content:6.6,human:7.0,load:5.5},
+  {date:'2023-01-10',wellbeing:6.6,work:6.2,love:6.6,mind:6.4,content:6.5,human:7.0,load:5.6},
+  {date:'2023-01-17',wellbeing:6.4,work:6.2,love:6.8,mind:6.5,content:6.4,human:7.3,load:5.5},
+  {date:'2023-01-24',wellbeing:6.3,work:6.6,love:6.8,mind:6.5,content:6.5,human:6.8,load:5.6},
+  {date:'2023-01-31',wellbeing:6.7,work:6.2,love:6.7,mind:6.0,content:6.6,human:7.3,load:5.7},
+  {date:'2023-02-07',wellbeing:6.7,work:6.6,love:6.9,mind:6.4,content:6.5,human:6.8,load:5.3},
+  {date:'2023-02-14',wellbeing:6.3,work:6.5,love:6.5,mind:6.3,content:6.5,human:7.2,load:5.5},
+  {date:'2023-02-21',wellbeing:6.6,work:6.1,love:6.7,mind:6.5,content:6.7,human:7.0,load:5.7},
+  {date:'2023-02-28',wellbeing:6.7,work:6.1,love:7.1,mind:6.3,content:6.5,human:7.1,load:5.4},
+  {date:'2023-03-07',wellbeing:6.8,work:6.5,love:6.9,mind:6.1,content:6.8,human:7.0,load:5.8},
+  {date:'2023-03-14',wellbeing:6.3,work:6.1,love:6.6,mind:6.0,content:6.4,human:7.2,load:5.4},
+  {date:'2023-03-21',wellbeing:6.8,work:6.6,love:7.0,mind:6.1,content:6.6,human:7.1,load:5.3},
+  {date:'2023-03-28',wellbeing:6.4,work:6.4,love:6.8,mind:6.1,content:6.8,human:6.8,load:5.6},
+  {date:'2023-04-04',wellbeing:6.7,work:6.4,love:7.0,mind:6.3,content:6.7,human:6.7,load:5.2},
+  {date:'2023-04-11',wellbeing:6.6,work:6.4,love:6.9,mind:6.4,content:6.5,human:7.1,load:5.5},
+  {date:'2023-04-18',wellbeing:6.6,work:6.2,love:7.1,mind:6.2,content:6.7,human:7.1,load:5.4},
+  {date:'2023-04-25',wellbeing:6.3,work:6.1,love:6.8,mind:6.2,content:6.4,human:7.1,load:5.4},
+  {date:'2023-05-02',wellbeing:6.7,work:6.5,love:7.0,mind:6.5,content:6.3,human:6.9,load:5.6},
+  {date:'2023-05-09',wellbeing:6.4,work:6.3,love:6.7,mind:6.1,content:6.3,human:6.9,load:5.5},
+  {date:'2023-05-16',wellbeing:6.6,work:6.2,love:7.1,mind:6.0,content:6.4,human:7.1,load:5.4},
+  {date:'2023-05-23',wellbeing:6.7,work:6.3,love:6.8,mind:6.3,content:6.4,human:6.7,load:5.8},
+  {date:'2023-05-30',wellbeing:6.5,work:6.6,love:6.7,mind:6.2,content:6.3,human:7.0,load:5.7},
+  {date:'2023-06-06',wellbeing:6.6,work:6.3,love:6.9,mind:6.5,content:6.5,human:7.3,load:5.7},
+  {date:'2023-06-13',wellbeing:6.7,work:6.3,love:6.8,mind:6.3,content:6.4,human:7.1,load:5.3},
+  {date:'2023-06-20',wellbeing:6.5,work:6.5,love:6.7,mind:6.5,content:6.7,human:6.8,load:5.8},
+  {date:'2023-06-27',wellbeing:6.5,work:6.5,love:6.7,mind:6.5,content:6.7,human:6.8,load:5.5},
+  {date:'2023-07-04',wellbeing:6.5,work:6.1,love:6.6,mind:6.2,content:6.5,human:7.0,load:5.6},
+  {date:'2023-07-11',wellbeing:6.6,work:6.2,love:6.9,mind:6.1,content:6.8,human:7.2,load:5.4},
+  {date:'2023-07-18',wellbeing:6.4,work:6.5,love:6.9,mind:6.4,content:6.4,human:7.2,load:5.4},
+  {date:'2023-07-25',wellbeing:6.6,work:6.6,love:6.9,mind:6.4,content:6.7,human:7.1,load:5.2},
+  {date:'2023-08-01',wellbeing:6.5,work:6.6,love:7.0,mind:6.4,content:6.6,human:7.2,load:5.6},
+  {date:'2023-08-08',wellbeing:6.3,work:6.4,love:6.9,mind:6.5,content:6.3,human:7.1,load:5.2},
+  {date:'2023-08-15',wellbeing:6.8,work:6.1,love:6.5,mind:6.1,content:6.3,human:7.1,load:5.5},
+  {date:'2023-08-22',wellbeing:6.7,work:6.6,love:7.1,mind:6.4,content:6.3,human:6.8,load:5.3},
+  {date:'2023-08-29',wellbeing:6.4,work:6.4,love:6.9,mind:6.1,content:6.4,human:7.3,load:5.4},
+  {date:'2023-09-05',wellbeing:6.5,work:6.5,love:7.0,mind:6.3,content:6.7,human:7.1,load:5.3},
+  {date:'2023-09-12',wellbeing:6.4,work:6.4,love:6.7,mind:6.5,content:6.4,human:6.9,load:5.3},
+  {date:'2023-09-19',wellbeing:6.7,work:6.2,love:6.7,mind:6.5,content:6.7,human:6.9,load:5.3},
+  {date:'2023-09-26',wellbeing:6.7,work:6.3,love:7.1,mind:6.5,content:6.8,human:7.2,load:5.4},
+  {date:'2023-10-03',wellbeing:6.4,work:6.5,love:6.7,mind:6.2,content:6.4,human:7.0,load:5.3},
+  {date:'2023-10-10',wellbeing:6.6,work:6.6,love:7.0,mind:6.0,content:6.6,human:7.1,load:5.4},
+  {date:'2023-10-17',wellbeing:6.6,work:6.4,love:6.9,mind:6.0,content:6.5,human:7.2,load:5.3},
+  {date:'2023-10-24',wellbeing:6.7,work:6.1,love:6.9,mind:6.5,content:6.5,human:7.3,load:5.7},
+  {date:'2023-10-31',wellbeing:6.5,work:6.2,love:7.1,mind:6.2,content:6.6,human:7.3,load:5.3},
+  {date:'2023-11-07',wellbeing:6.6,work:6.4,love:7.0,mind:6.5,content:6.8,human:6.8,load:5.8},
+  {date:'2023-11-14',wellbeing:6.4,work:6.6,love:7.1,mind:6.2,content:6.5,human:7.3,load:5.8},
+  {date:'2023-11-21',wellbeing:6.8,work:6.6,love:6.5,mind:6.3,content:6.3,human:7.3,load:5.4},
+  {date:'2023-11-28',wellbeing:6.8,work:6.4,love:6.8,mind:6.5,content:6.8,human:7.0,load:5.3},
+  {date:'2023-12-05',wellbeing:6.3,work:6.2,love:6.8,mind:6.1,content:6.4,human:7.2,load:5.7},
+  {date:'2023-12-12',wellbeing:6.6,work:6.5,love:6.6,mind:6.5,content:6.8,human:7.2,load:5.5},
+  {date:'2023-12-19',wellbeing:6.3,work:6.5,love:6.7,mind:6.0,content:6.4,human:6.9,load:5.4},
+  {date:'2023-12-26',wellbeing:6.4,work:6.5,love:7.1,mind:6.1,content:6.7,human:6.7,load:5.6},
+  {date:'2024-01-02',wellbeing:6.7,work:6.1,love:6.6,mind:6.1,content:6.5,human:7.0,load:5.8},
+  {date:'2024-01-09',wellbeing:6.7,work:6.2,love:6.6,mind:6.5,content:6.4,human:7.1,load:5.4},
+  {date:'2024-01-16',wellbeing:6.3,work:6.1,love:7.0,mind:6.3,content:6.5,human:7.1,load:5.5},
+  {date:'2024-01-23',wellbeing:6.6,work:6.5,love:6.7,mind:6.1,content:6.7,human:7.3,load:5.3},
+  {date:'2024-01-30',wellbeing:6.5,work:6.5,love:6.6,mind:6.3,content:6.3,human:7.1,load:5.5},
+  {date:'2024-02-06',wellbeing:6.6,work:6.1,love:6.7,mind:6.3,content:6.3,human:6.9,load:5.6},
+  {date:'2024-02-13',wellbeing:6.3,work:6.4,love:7.0,mind:6.2,content:6.6,human:7.0,load:5.3},
+  {date:'2024-02-20',wellbeing:6.5,work:6.5,love:7.0,mind:6.2,content:6.7,human:7.2,load:5.6},
+  {date:'2024-02-27',wellbeing:6.3,work:6.3,love:6.6,mind:6.6,content:6.8,human:6.8,load:5.8},
+  {date:'2024-03-05',wellbeing:6.3,work:6.3,love:7.0,mind:6.4,content:6.8,human:7.1,load:5.5},
+  {date:'2024-03-12',wellbeing:6.8,work:6.3,love:7.1,mind:6.5,content:6.5,human:7.1,load:5.6},
+  {date:'2024-03-19',wellbeing:6.6,work:6.5,love:6.8,mind:6.1,content:6.6,human:7.1,load:5.7},
+  {date:'2024-03-26',wellbeing:6.4,work:6.1,love:6.6,mind:6.1,content:6.7,human:7.1,load:5.5},
+  {date:'2024-04-02',wellbeing:6.7,work:6.2,love:6.8,mind:6.1,content:6.8,human:7.2,load:5.3},
+  {date:'2024-04-09',wellbeing:6.7,work:6.3,love:7.0,mind:6.5,content:6.3,human:6.9,load:5.3},
+  {date:'2024-04-16',wellbeing:6.3,work:6.4,love:7.0,mind:6.0,content:6.7,human:7.0,load:5.4},
+  {date:'2024-04-23',wellbeing:6.4,work:6.6,love:6.6,mind:6.3,content:6.4,human:7.2,load:5.7},
+  {date:'2024-04-30',wellbeing:6.4,work:6.4,love:6.9,mind:6.2,content:6.4,human:6.8,load:5.6},
+  {date:'2024-05-07',wellbeing:6.4,work:6.2,love:6.6,mind:6.5,content:6.8,human:7.3,load:5.6},
+  {date:'2024-05-14',wellbeing:6.5,work:6.4,love:7.1,mind:6.5,content:6.7,human:7.2,load:5.4},
+  {date:'2024-05-21',wellbeing:6.5,work:6.2,love:6.8,mind:6.4,content:6.5,human:7.2,load:5.4},
+  {date:'2024-05-28',wellbeing:6.7,work:6.5,love:7.1,mind:6.3,content:6.8,human:7.1,load:5.3},
+  {date:'2024-06-04',wellbeing:6.4,work:6.2,love:6.9,mind:6.5,content:6.8,human:6.8,load:5.7},
+  {date:'2024-06-11',wellbeing:6.4,work:6.2,love:6.9,mind:6.3,content:6.8,human:6.8,load:5.7},
+  {date:'2024-06-18',wellbeing:6.7,work:6.4,love:6.8,mind:6.5,content:6.5,human:7.3,load:5.2},
+  {date:'2024-06-25',wellbeing:6.8,work:6.6,love:6.6,mind:6.6,content:6.5,human:6.9,load:5.6},
+  {date:'2024-07-02',wellbeing:6.4,work:6.6,love:6.9,mind:6.4,content:6.5,human:7.1,load:5.4},
+  {date:'2024-07-09',wellbeing:6.4,work:6.4,love:6.8,mind:6.0,content:6.8,human:7.0,load:5.7},
+  {date:'2024-07-16',wellbeing:6.8,work:6.3,love:6.8,mind:6.3,content:6.4,human:6.8,load:5.4},
+  {date:'2024-07-23',wellbeing:6.8,work:6.4,love:6.8,mind:6.1,content:6.5,human:7.0,load:5.7},
+  {date:'2024-07-30',wellbeing:6.6,work:6.5,love:7.0,mind:6.1,content:6.8,human:7.3,load:5.6},
+  {date:'2024-08-06',wellbeing:6.5,work:6.2,love:7.0,mind:6.1,content:6.7,human:7.0,load:5.8},
+  {date:'2024-08-13',wellbeing:6.6,work:6.4,love:6.6,mind:6.0,content:6.8,human:7.3,load:5.6},
+  {date:'2024-08-20',wellbeing:6.7,work:6.3,love:7.1,mind:6.1,content:6.7,human:6.7,load:5.5},
+  {date:'2024-08-27',wellbeing:6.5,work:6.4,love:6.9,mind:6.3,content:6.6,human:7.0,load:5.2},
+  {date:'2024-09-03',wellbeing:6.6,work:6.1,love:6.9,mind:6.1,content:6.8,human:6.7,load:5.7},
+  {date:'2024-09-10',wellbeing:6.7,work:6.5,love:7.1,mind:6.0,content:6.3,human:6.8,load:5.3},
+  {date:'2024-09-17',wellbeing:6.6,work:6.6,love:6.7,mind:6.2,content:6.5,human:7.0,load:5.6},
+  {date:'2024-09-24',wellbeing:6.9,work:6.2,love:7.0,mind:6.5,content:6.7,human:7.3,load:5.7},
+  {date:'2024-10-01',wellbeing:6.3,work:6.3,love:6.9,mind:6.0,content:6.3,human:6.8,load:5.5},
+  {date:'2024-10-08',wellbeing:6.5,work:6.5,love:6.9,mind:6.5,content:6.3,human:7.1,load:5.3},
+  {date:'2024-10-15',wellbeing:6.4,work:6.6,love:7.1,mind:6.3,content:6.3,human:6.8,load:5.8},
+  {date:'2024-10-22',wellbeing:6.8,work:6.4,love:6.6,mind:6.5,content:6.5,human:7.3,load:5.6},
+  {date:'2024-10-29',wellbeing:6.7,work:6.5,love:6.8,mind:6.0,content:6.4,human:6.9,load:5.7},
+  {date:'2024-11-05',wellbeing:6.5,work:6.6,love:6.7,mind:6.4,content:6.3,human:7.3,load:5.7},
+  {date:'2024-11-12',wellbeing:6.6,work:6.7,love:6.6,mind:6.2,content:6.8,human:6.9,load:5.7},
+  {date:'2024-11-19',wellbeing:6.8,work:6.3,love:7.0,mind:6.0,content:6.4,human:7.3,load:5.5},
+  {date:'2024-11-26',wellbeing:6.5,work:6.6,love:6.8,mind:6.4,content:6.7,human:6.8,load:5.6},
+  {date:'2024-12-03',wellbeing:6.7,work:6.5,love:6.6,mind:6.1,content:6.7,human:7.1,load:5.7},
+  {date:'2024-12-10',wellbeing:6.4,work:6.1,love:6.6,mind:6.2,content:6.5,human:6.9,load:5.3},
+  {date:'2024-12-17',wellbeing:6.4,work:6.3,love:6.9,mind:6.2,content:6.3,human:7.0,load:5.3},
+  {date:'2024-12-24',wellbeing:6.6,work:6.3,love:6.8,mind:6.2,content:6.5,human:6.8,load:5.8}
+].map(d=>({...d,_date:new Date(d.date)}));
+const D6_EVERY20=[
+  {date:'2020-01-07',wellbeing:6.7,work:6.6,love:6.8,mind:6.0,content:6.4,human:6.8,load:5.4},
+  {date:'2020-01-27',wellbeing:6.5,work:6.0,love:6.8,mind:6.2,content:6.5,human:6.7,load:5.4},
+  {date:'2020-02-16',wellbeing:6.3,work:6.4,love:6.9,mind:6.0,content:6.3,human:6.9,load:5.8},
+  {date:'2020-03-07',wellbeing:6.4,work:6.4,love:7.0,mind:6.1,content:6.4,human:7.2,load:5.7},
+  {date:'2020-03-27',wellbeing:6.8,work:6.1,love:6.7,mind:6.5,content:6.3,human:6.9,load:5.8},
+  {date:'2020-04-16',wellbeing:6.8,work:6.2,love:6.9,mind:6.2,content:6.5,human:6.8,load:5.4},
+  {date:'2020-05-06',wellbeing:6.7,work:6.2,love:6.6,mind:6.2,content:6.6,human:7.0,load:5.6},
+  {date:'2020-05-26',wellbeing:6.5,work:6.6,love:6.8,mind:6.3,content:6.5,human:6.9,load:5.6},
+  {date:'2020-06-15',wellbeing:6.7,work:6.5,love:6.7,mind:6.2,content:6.6,human:6.8,load:5.6},
+  {date:'2020-07-05',wellbeing:6.6,work:6.5,love:6.5,mind:6.5,content:6.5,human:6.9,load:5.5},
+  {date:'2020-07-25',wellbeing:6.8,work:6.4,love:6.8,mind:6.4,content:6.4,human:7.2,load:5.5},
+  {date:'2020-08-14',wellbeing:6.6,work:6.1,love:7.0,mind:6.3,content:6.4,human:7.1,load:5.2},
+  {date:'2020-09-03',wellbeing:6.8,work:6.4,love:6.7,mind:6.4,content:6.8,human:7.0,load:5.2},
+  {date:'2020-09-23',wellbeing:6.4,work:6.3,love:6.8,mind:6.3,content:6.6,human:7.0,load:5.4},
+  {date:'2020-10-13',wellbeing:6.7,work:6.4,love:6.8,mind:6.1,content:6.2,human:6.8,load:5.5},
+  {date:'2020-11-02',wellbeing:6.8,work:6.1,love:7.1,mind:6.0,content:6.4,human:7.0,load:5.3},
+  {date:'2020-11-22',wellbeing:6.5,work:6.3,love:6.8,mind:6.3,content:6.4,human:6.9,load:5.7},
+  {date:'2020-12-12',wellbeing:6.3,work:6.5,love:6.9,mind:6.3,content:6.3,human:7.3,load:5.4},
+  {date:'2021-01-01',wellbeing:6.3,work:6.1,love:6.8,mind:6.5,content:6.4,human:7.0,load:5.3},
+  {date:'2021-01-21',wellbeing:6.6,work:6.3,love:6.5,mind:6.3,content:6.3,human:7.1,load:5.4},
+  {date:'2021-02-10',wellbeing:6.6,work:6.1,love:7.0,mind:6.4,content:6.3,human:6.8,load:5.7},
+  {date:'2021-03-02',wellbeing:6.3,work:6.2,love:6.8,mind:6.1,content:6.7,human:7.0,load:5.6},
+  {date:'2021-03-22',wellbeing:6.6,work:6.4,love:6.9,mind:6.1,content:6.7,human:7.1,load:5.7},
+  {date:'2021-04-11',wellbeing:6.6,work:6.2,love:6.9,mind:6.0,content:6.3,human:6.8,load:5.4},
+  {date:'2021-05-01',wellbeing:6.3,work:6.4,love:6.8,mind:6.2,content:6.3,human:6.9,load:5.3},
+  {date:'2021-05-21',wellbeing:6.6,work:6.4,love:6.9,mind:6.5,content:6.6,human:7.0,load:5.3},
+  {date:'2021-06-10',wellbeing:6.4,work:6.3,love:6.5,mind:6.1,content:6.2,human:6.8,load:5.7},
+  {date:'2021-06-30',wellbeing:6.8,work:6.3,love:6.8,mind:6.3,content:6.5,human:7.2,load:5.5},
+  {date:'2021-07-20',wellbeing:6.3,work:6.0,love:7.0,mind:6.1,content:6.4,human:7.0,load:5.3},
+  {date:'2021-08-09',wellbeing:6.5,work:6.5,love:7.0,mind:6.3,content:6.3,human:6.8,load:5.7},
+  {date:'2021-08-29',wellbeing:6.7,work:6.2,love:7.0,mind:6.0,content:6.7,human:7.0,load:5.8},
+  {date:'2021-09-18',wellbeing:6.3,work:6.5,love:7.0,mind:6.1,content:6.8,human:7.0,load:5.4},
+  {date:'2021-10-08',wellbeing:6.7,work:6.3,love:7.1,mind:6.4,content:6.4,human:7.2,load:5.6},
+  {date:'2021-10-28',wellbeing:6.4,work:6.5,love:6.9,mind:6.0,content:6.3,human:6.8,load:5.3},
+  {date:'2021-11-17',wellbeing:6.3,work:6.2,love:6.7,mind:6.3,content:6.4,human:7.1,load:5.4},
+  {date:'2021-12-07',wellbeing:6.4,work:6.5,love:7.1,mind:6.3,content:6.3,human:7.3,load:5.7},
+  {date:'2021-12-27',wellbeing:6.8,work:6.6,love:7.0,mind:6.0,content:6.7,human:6.9,load:5.6},
+  {date:'2022-01-16',wellbeing:6.7,work:6.5,love:6.9,mind:6.2,content:6.6,human:6.9,load:5.5},
+  {date:'2022-02-05',wellbeing:6.5,work:6.4,love:7.0,mind:6.0,content:6.5,human:6.9,load:5.8},
+  {date:'2022-02-25',wellbeing:6.4,work:6.6,love:6.7,mind:5.9,content:6.7,human:7.2,load:5.7},
+  {date:'2022-03-17',wellbeing:6.5,work:6.4,love:6.7,mind:6.0,content:6.5,human:6.8,load:5.5},
+  {date:'2022-04-06',wellbeing:6.4,work:6.2,love:7.0,mind:6.1,content:6.6,human:7.1,load:5.5},
+  {date:'2022-04-26',wellbeing:6.4,work:6.4,love:6.6,mind:6.0,content:6.7,human:7.0,load:5.3},
+  {date:'2022-05-16',wellbeing:6.7,work:6.3,love:6.5,mind:6.5,content:6.4,human:7.1,load:5.3},
+  {date:'2022-06-05',wellbeing:6.6,work:6.1,love:7.1,mind:6.1,content:6.6,human:6.9,load:5.4},
+  {date:'2022-06-25',wellbeing:6.8,work:6.1,love:6.8,mind:6.1,content:6.7,human:6.9,load:5.6},
+  {date:'2022-07-15',wellbeing:6.7,work:6.0,love:6.8,mind:6.0,content:6.4,human:7.1,load:5.2},
+  {date:'2022-08-04',wellbeing:6.6,work:6.5,love:7.1,mind:6.2,content:6.3,human:6.8,load:5.4},
+  {date:'2022-08-24',wellbeing:6.7,work:6.1,love:6.7,mind:6.5,content:6.3,human:7.2,load:5.7},
+  {date:'2022-09-13',wellbeing:6.3,work:6.6,love:6.6,mind:6.3,content:6.2,human:7.1,load:5.5},
+  {date:'2022-10-03',wellbeing:6.7,work:6.4,love:6.6,mind:6.2,content:6.6,human:7.2,load:5.3},
+  {date:'2022-10-23',wellbeing:6.3,work:6.5,love:6.9,mind:6.2,content:6.8,human:6.9,load:5.3},
+  {date:'2022-11-12',wellbeing:6.4,work:6.1,love:6.9,mind:6.3,content:6.6,human:7.2,load:5.6},
+  {date:'2022-12-02',wellbeing:6.7,work:6.4,love:6.7,mind:6.3,content:6.5,human:7.2,load:5.4},
+  {date:'2022-12-22',wellbeing:6.3,work:6.6,love:7.1,mind:6.2,content:6.3,human:7.0,load:5.6},
+  {date:'2023-01-11',wellbeing:6.6,work:6.6,love:7.1,mind:6.5,content:6.3,human:7.2,load:5.6},
+  {date:'2023-01-31',wellbeing:6.5,work:6.5,love:7.0,mind:6.5,content:6.7,human:6.7,load:5.3},
+  {date:'2023-02-20',wellbeing:6.4,work:6.1,love:6.6,mind:6.4,content:6.5,human:7.1,load:5.5},
+  {date:'2023-03-12',wellbeing:6.5,work:6.5,love:6.6,mind:6.3,content:6.6,human:6.9,load:5.4},
+  {date:'2023-04-01',wellbeing:6.5,work:6.2,love:7.0,mind:6.3,content:6.5,human:7.1,load:5.7},
+  {date:'2023-04-21',wellbeing:6.6,work:6.1,love:7.0,mind:6.4,content:6.8,human:6.8,load:5.3},
+  {date:'2023-05-11',wellbeing:6.5,work:6.3,love:6.9,mind:6.1,content:6.7,human:7.2,load:5.3},
+  {date:'2023-05-31',wellbeing:6.7,work:6.5,love:6.6,mind:6.5,content:6.6,human:7.2,load:5.7},
+  {date:'2023-06-20',wellbeing:6.3,work:6.1,love:7.0,mind:6.1,content:6.8,human:7.2,load:5.2},
+  {date:'2023-07-10',wellbeing:6.7,work:6.2,love:6.6,mind:6.4,content:6.6,human:6.8,load:5.5},
+  {date:'2023-07-30',wellbeing:6.5,work:6.4,love:6.9,mind:6.2,content:6.4,human:6.8,load:5.6},
+  {date:'2023-08-19',wellbeing:6.7,work:6.2,love:6.8,mind:6.0,content:6.8,human:6.9,load:5.5},
+  {date:'2023-09-08',wellbeing:6.5,work:6.1,love:7.1,mind:6.5,content:6.6,human:7.3,load:5.7},
+  {date:'2023-09-28',wellbeing:6.5,work:6.2,love:6.8,mind:6.4,content:6.4,human:6.8,load:5.4},
+  {date:'2023-10-18',wellbeing:6.5,work:6.6,love:6.6,mind:6.4,content:6.8,human:7.3,load:5.3},
+  {date:'2023-11-07',wellbeing:6.5,work:6.2,love:7.0,mind:6.2,content:6.6,human:6.7,load:5.3},
+  {date:'2023-11-27',wellbeing:6.6,work:6.2,love:6.9,mind:6.2,content:6.6,human:7.0,load:5.7},
+  {date:'2023-12-17',wellbeing:6.4,work:6.6,love:7.0,mind:6.1,content:6.3,human:7.0,load:5.4},
+  {date:'2024-01-06',wellbeing:6.5,work:6.6,love:7.1,mind:6.5,content:6.3,human:7.1,load:5.7},
+  {date:'2024-01-26',wellbeing:6.7,work:6.1,love:6.9,mind:6.1,content:6.5,human:6.8,load:5.8},
+  {date:'2024-02-15',wellbeing:6.7,work:6.1,love:7.1,mind:6.5,content:6.6,human:7.2,load:5.4},
+  {date:'2024-03-06',wellbeing:6.8,work:6.1,love:6.6,mind:6.0,content:6.7,human:6.8,load:5.6},
+  {date:'2024-03-26',wellbeing:6.5,work:6.6,love:6.7,mind:6.1,content:6.4,human:7.2,load:5.6},
+  {date:'2024-04-15',wellbeing:6.7,work:6.3,love:6.7,mind:6.0,content:6.4,human:7.2,load:5.6},
+  {date:'2024-05-05',wellbeing:6.3,work:6.2,love:6.8,mind:6.2,content:6.6,human:7.3,load:5.4},
+  {date:'2024-05-25',wellbeing:6.4,work:6.2,love:6.6,mind:6.1,content:6.7,human:7.2,load:5.6},
+  {date:'2024-06-14',wellbeing:6.3,work:6.6,love:6.7,mind:6.0,content:6.4,human:6.9,load:5.5},
+  {date:'2024-07-04',wellbeing:6.7,work:6.2,love:7.1,mind:6.0,content:6.5,human:7.0,load:5.7},
+  {date:'2024-07-24',wellbeing:6.4,work:6.3,love:7.0,mind:6.1,content:6.3,human:7.2,load:5.8},
+  {date:'2024-08-13',wellbeing:6.3,work:6.6,love:6.8,mind:6.4,content:6.6,human:7.1,load:5.4},
+  {date:'2024-09-02',wellbeing:6.7,work:6.1,love:6.6,mind:6.5,content:6.5,human:6.8,load:5.8},
+  {date:'2024-09-22',wellbeing:6.8,work:6.3,love:6.6,mind:6.3,content:6.4,human:7.1,load:5.7},
+  {date:'2024-10-12',wellbeing:6.5,work:6.1,love:7.0,mind:6.1,content:6.4,human:6.9,load:5.4},
+  {date:'2024-11-01',wellbeing:6.8,work:6.1,love:6.9,mind:6.1,content:6.4,human:7.0,load:5.6},
+  {date:'2024-11-21',wellbeing:6.3,work:6.2,love:6.6,mind:6.1,content:6.8,human:7.1,load:5.6}
+].map(d=>({...d,_date:new Date(d.date)}));
+
+// ── Chart ユーティリティ ──
+function makeChart(cvId,hRatio){
+  hRatio=hRatio||0.42;
+  const cv=document.getElementById(cvId),ctx=cv.getContext('2d');
+  const PAD={t:16,r:20,b:36,l:42};
+  let data=[],off={},hIdx=-1,prog=0,raf=null,yMin=0,yMax=10;
+  function pl(){const W=cv.width/dpr,H=cv.height/dpr;return{x:PAD.l,y:PAD.t,w:W-PAD.l-PAD.r,h:H-PAD.t-PAD.b};}
+  function xpx(i,p){return p.x+(i/Math.max(data.length-1,1))*p.w;}
+  function ypx(v,p){return p.y+p.h*(1-(v-yMin)/(yMax-yMin));}
+  function resize(wrapId){
+    const el=document.getElementById(wrapId),W=el.clientWidth;
+    if(!W)return;
+    const H=Math.round(W*hRatio);
+    cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+    ctx.setTransform(1,0,0,1,0,0);ctx.scale(dpr,dpr);
+    draw(prog);
+  }
+  function calcAutoRange(){
+    if(!data.length)return{min:0,max:10};
+    // 表示中データ × ONの系列のみで計算
+    let mn=Infinity,mx=-Infinity;
+    data.forEach(row=>SERIES.forEach(s=>{if(!off[s.key]){const v=row[s.key].map(d=>({...d,_date:new Date(d.date)}));if(v<mn)mn=v;if(v>mx)mx=v;}}));
+    if(!isFinite(mn))return{min:0,max:10};
+    // 余白は範囲全体の5%を上下均等に
+    const m=(mx-mn)*0.05;
+    const yMin=Math.max(0,Math.round((mn-m)*1000)/1000);
+    const yMax=Math.min(10,Math.round((mx+m)*1000)/1000);
+    return{min:yMin,max:yMax};
+  }
+  function calcAuto(){
+    const r=calcAutoRange();yMin=r.min;yMax=r.max;
+  }
+  function draw(p){
+    const W=cv.width/dpr,H=cv.height/dpr;ctx.clearRect(0,0,W,H);
+    if(!data.length)return;
+    const p_=pl(),font="10px -apple-system,'Hiragino Sans',sans-serif";
+    ctx.save();
+    const rng=yMax-yMin;
+    let step;
+    if(yMin===0&&yMax===10) step=2;
+    else step=rng<3?0.5:1.0;
+
+    for(let v=Math.ceil(yMin/step)*step;v<=yMax+0.001;v=Math.round((v+step)*100)/100){
+      const y=ypx(v,p_);
+      ctx.font=font;ctx.textAlign='right';ctx.fillStyle='#94a3b8';ctx.fillText(v%1===0?v:v.toFixed(1),p_.x-7,y+3.5);
+    }
+    {const minLabelWidth=60;const maxLabels=Math.max(1,Math.floor(p_.w/minLabelWidth));const skip=Math.ceil(data.length/maxLabels);data.forEach((d,i)=>{const x=xpx(i,p_);const showLine=data.length<=12||i%skip===0;const showLabel=i%skip===0;if(showLine){ctx.beginPath();ctx.moveTo(x,p_.y);ctx.lineTo(x,p_.y+p_.h);ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;ctx.stroke();}if(showLabel){ctx.font=font;ctx.textAlign='center';ctx.fillStyle='#94a3b8';ctx.fillText((d=>{const p=d.date.split('-');return "'"+(p[0].slice(2))+'/'+parseInt(p[1])+'/'+parseInt(p[2]);})(d),x,p_.y+p_.h+22);}});}
+    ctx.restore();
+    const clipX=p_.x+p*p_.w+2;
+    SERIES.forEach(s=>{
+      if(off[s.key]||data.length<2)return;
+      const pts=data.map((d,i)=>({x:xpx(i,p_),y:ypx(d[s.key],p_)}));
+      ctx.save();ctx.beginPath();ctx.rect(0,0,clipX,H);ctx.clip();
+      ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+      for(let i=0;i<pts.length-1;i++){const cx=(pts[i].x+pts[i+1].x)/2;ctx.bezierCurveTo(cx,pts[i].y,cx,pts[i+1].y,pts[i+1].x,pts[i+1].y);}
+      ctx.strokeStyle=s.color;ctx.lineWidth=1.8;ctx.lineJoin='round';ctx.lineCap='round';ctx.stroke();
+      pts.forEach(({x,y})=>{if(x>clipX)return;ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle=s.color;ctx.fill();});
+      ctx.restore();
+    });
+    if(p>=1&&hIdx>=0){
+      const x=xpx(hIdx,p_);
+      ctx.save();ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(x,p_.y);ctx.lineTo(x,p_.y+p_.h);ctx.strokeStyle='rgba(100,116,139,0.3)';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+      SERIES.forEach(s=>{if(off[s.key])return;const y=ypx(data[hIdx][s.key],p_);ctx.beginPath();ctx.arc(x,y,4.5,0,Math.PI*2);ctx.fillStyle=s.color;ctx.fill();ctx.beginPath();ctx.arc(x,y,4.5,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();});
+      ctx.restore();
+    }
+  }
+  function animate(){
+    if(raf)cancelAnimationFrame(raf);prog=0;hIdx=-1;
+    const T=560,t0=performance.now();
+    function step(now){const t=Math.min((now-t0)/T,1);prog=t<0.5?2*t*t:-1+(4-2*t)*t;draw(prog);if(t<1)raf=requestAnimationFrame(step);else{prog=1;draw(1);}}
+    raf=requestAnimationFrame(step);
+  }
+  return {cv,ctx,pl,xpx,ypx,
+    get data(){return data;},set data(d){data=d;},
+    get off(){return off;},
+    get hIdx(){return hIdx;},set hIdx(v){hIdx=v;},
+    get prog(){return prog;},
+    get yMin(){return yMin;},set yMin(v){yMin=v;},
+    get yMax(){return yMax;},set yMax(v){yMax=v;},
+    calcAuto,calcAutoRange,resize,draw,animate,scaleAnimate,
+  };
+  function scaleAnimate(toMin,toMax){
+    if(raf)cancelAnimationFrame(raf);hIdx=-1;
+    const fromMin=yMin,fromMax=yMax;
+    const T=400,t0=performance.now();
+    function step(now){
+      const t=Math.min((now-t0)/T,1);
+      const ease=t<0.5?2*t*t:-1+(4-2*t)*t;
+      yMin=fromMin+(toMin-fromMin)*ease;
+      yMax=fromMax+(toMax-fromMax)*ease;
+      draw(1);
+      if(t<1)raf=requestAnimationFrame(step);
+      else{yMin=toMin;yMax=toMax;draw(1);}
+    }
+    raf=requestAnimationFrame(step);
+  }
+}
+
+function makeTip(chart,tipId,wrapId,withDiff){
+  const tip=document.getElementById(tipId);
+  chart.cv.addEventListener('mousemove',e=>{
+    if(chart.prog<1)return;
+    const r=chart.cv.getBoundingClientRect(),mx=e.clientX-r.left,p=chart.pl();
+    if(mx<p.x-8||mx>p.x+p.w+8){chart.hIdx=-1;chart.draw(1);tip.classList.remove('show');return;}
+    const n=chart.data.length,step=n>1?p.w/(n-1):p.w,thresh=Math.min(step/2,32);
+    const ci=Math.round(Math.max(0,Math.min(1,(mx-p.x)/p.w))*(n-1));
+    const cx=p.x+ci/Math.max(n-1,1)*p.w;
+    if(Math.abs(mx-cx)>thresh){chart.hIdx=-1;chart.draw(1);tip.classList.remove('show');return;}
+    chart.hIdx=ci;chart.draw(1);
+    const d=chart.data[ci].map(d=>({...d,_date:new Date(d.date)}));let h=`<div class="tooltip-date">${d.date}</div>`;
+    SERIES.forEach(s=>{
+      if(chart.off[s.key])return;
+      let ds='';
+      if(withDiff&&ci>0){const diff=Math.round((d[s.key]-chart.data[ci-1][s.key])*100)/100;if(diff!==0)ds=` <span style="color:${diff>0?'#16a34a':'#dc2626'};font-size:10px">${diff>0?'▲':'▼'}${Math.abs(diff).toFixed(2)}</span>`;}
+      h+=`<div class="tooltip-row"><div class="tdot" style="background:${s.color}"></div><span class="tlabel">${s.label}</span><span class="tval">${d[s.key].toFixed(1)}${ds}</span></div>`;
+    });
+    tip.innerHTML=h;tip.classList.add('show');
+    const wW=document.getElementById(wrapId).clientWidth,tW=tip.offsetWidth||220;
+    let left=mx+16;if(left+tW>wW-8)left=mx-tW-16;
+    tip.style.left=Math.max(0,left)+'px';tip.style.top='24px';
+  });
+  chart.cv.addEventListener('mouseleave',()=>{chart.hIdx=-1;chart.draw(1);tip.classList.remove('show');});
+}
+
+function makeLegend(legId,chart,onToggle){
+  const leg=document.getElementById(legId);
+  SERIES.forEach(s=>{
+    const el=document.createElement('div');el.className='legend-item';
+    el.innerHTML=`<div class="legend-dot" style="background:${s.color}"></div><span>${s.label}</span>`;
+    el.addEventListener('click',()=>{chart.off[s.key]=!chart.off[s.key];el.classList.toggle('off',!!chart.off[s.key]);if(onToggle)onToggle();else chart.draw(1);});
+    leg.appendChild(el);
+  });
+}
+
+function makeSegFilter(segTabId,segBtnId,defs,onSelect){
+  const segTabs=document.getElementById(segTabId),segBtns=document.getElementById(segBtnId);
+  function renderBtns(seg){
+    const d=defs[seg];
+    segBtns.innerHTML=d.map((b,i)=>`<button class="filter-btn${i===0?' active':''}" data-type="${b.t}" data-n="${b.n}">${b.l}${b.t!=='count'?'('+countForFilter(b.t,b.n)+')':''}</button>`).join('');
+    const f=segBtns.querySelector('.filter-btn');onSelect(f.dataset.type,f.dataset.n);
+  }
+  segTabs.addEventListener('click',e=>{const t=e.target.closest('.seg-tab');if(!t)return;segTabs.querySelectorAll('.seg-tab').forEach(x=>x.classList.remove('active'));t.classList.add('active');renderBtns(t.dataset.seg);});
+  segBtns.addEventListener('click',e=>{const b=e.target.closest('.filter-btn');if(!b)return;segBtns.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');onSelect(b.dataset.type,b.dataset.n);});
+  return ()=>renderBtns('count');
+}
+
+const SEG_DEFS={
+  count:[{t:'count',n:'4',l:'直近4回分'},{t:'count',n:'8',l:'過去8回分'},{t:'count',n:'12',l:'過去12回分'}],
+  period:[{t:'months',n:'6',l:'過去6ヶ月'},{t:'months',n:'12',l:'過去1年'},{t:'months',n:'36',l:'過去3年'},{t:'all',n:'',l:'全期間'}]
+};
+
+// ── メモ・localStorage ──
+const STORAGE_KEY='wellbeing_memo_v2';
+const MEMO_IDS=['ax-task','ax-premise','ax-issue','y-task','y-premise','y-issue'];
+function autoResize(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+function addItem(id,ph){
+  const c=document.getElementById(id),d=document.createElement('div');d.className='context-item';
+  d.innerHTML=`<textarea class="context-item-text" rows="1" oninput="autoResize(this);saveMemo()" placeholder="${ph}"></textarea><button class="context-item-del" onclick="removeItem(this)">×</button>`;
+  c.appendChild(d);const ta=d.querySelector('textarea');ta.focus();autoResize(ta);saveMemo();
+}
+function removeItem(btn){btn.closest('.context-item').remove();saveMemo();}
+function removeEvalItem(btn){btn.closest('.eval-item').remove();}
+function addEvalItem(btn,ph){
+  const c=btn.previousElementSibling,d=document.createElement('div');d.className='eval-item';
+  d.innerHTML=`<textarea class="eval-item-text" rows="1" oninput="autoResize(this)" placeholder="${ph}"></textarea><button class="eval-item-del" onclick="removeEvalItem(this)">×</button>`;
+  c.appendChild(d);const ta=d.querySelector('textarea');ta.focus();autoResize(ta);
+}
+function saveMemo(){
+  const data={};
+  MEMO_IDS.forEach(id=>{const el=document.getElementById(id);if(!el)return;data[id]=Array.from(el.querySelectorAll('.context-item-text')).map(t=>t.value);});
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}catch(e){}
+}
+function loadMemo(){
+  let data;try{data=JSON.parse(localStorage.getItem(STORAGE_KEY));}catch(e){}
+  if(!data)return;
+  MEMO_IDS.forEach(id=>{
+    const el=document.getElementById(id);if(!el||!data[id]||!data[id].length)return;
+    const existing=el.querySelectorAll('.context-item-text');
+    data[id].forEach((val,i)=>{if(existing[i])existing[i].value=val;});
+  });
+}
+document.querySelectorAll('.context-item-text').forEach(ta=>{autoResize(ta);ta.addEventListener('input',saveMemo);});
+document.querySelectorAll('.eval-item-text').forEach(autoResize);
+
+
+// ── ページタブ ──
+document.querySelectorAll('.page-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.page-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.page-content').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('page-'+tab.dataset.page).classList.add('active');
+    requestAnimationFrame(()=>{
+      if(tab.dataset.page==='axis'){axChart.resize('ax-wrap');}
+      if(tab.dataset.page==='yaxis'){
+        if(!d6Inited){
+          document.getElementById('yv-d6').style.display='';
+          d6Inited=true;initD6Y();
+        } else {
+          const activeTab=document.querySelector('#yv-tabs .variant-tab.active');
+          if(activeTab){
+            document.querySelectorAll('.yv-panel').forEach(p=>p.style.display='none');
+            document.getElementById('yv-'+activeTab.dataset.yv).style.display='';
+          }
+        }
+      }
+    });
+  });
+});
+
+// ── 縦軸タブ ──
+document.getElementById('yv-tabs').addEventListener('click',e=>{
+  const tab=e.target.closest('.variant-tab');if(!tab)return;
+  document.querySelectorAll('#yv-tabs .variant-tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');
+  document.querySelectorAll('.yv-panel').forEach(p=>p.style.display='none');
+  document.getElementById('yv-'+tab.dataset.yv).style.display='';
+  requestAnimationFrame(()=>{
+    if(tab.dataset.yv==='d6'){if(!d6Inited){d6Inited=true;initD6Y();}else d6Chart.resize('d6-wrap');}
+    if(tab.dataset.yv==='d7'){if(!d7Inited){d7Inited=true;initD7Y();}else d7Chart.resize();}
+  });
+});
+
+
+// ══════════════════════════════════════════════════════════
+// 縦軸タブ: D-6 時間軸ラベル（Bパターン・自前Canvas）
+// ══════════════════════════════════════════════════════════
+function makeChartD6(cvId){
+  const base=makeChart(cvId);
+  const origDraw=base.draw.bind(base);
+  base.draw=function(p){
+    origDraw(p);
+    if(!base.data.length||p<1)return;
+    const data=base.data;
+    const n=data.length;
+    const p_=base.pl();
+    const ctx=base.ctx;
+    const font="10px -apple-system,'Hiragino Sans',sans-serif";
+
+    const firstDate=new Date(data[0].date),lastDate=new Date(data[n-1].date);
+    const spanDays=(lastDate-firstDate)/86400000;
+    const avgInterval=n>1?spanDays/(n-1):30;
+
+    let fmtFn,groupKeyFn;
+    if(avgInterval>25){
+      fmtFn=d=>{const p=d.date.split('-');return "'"+p[0].slice(2)+'/'+parseInt(p[1])+'/'+parseInt(p[2]);};
+      groupKeyFn=null;
+    } else {
+      if(spanDays<=90)        fmtFn=d=>{const p=d.date.split('-');return "'"+p[0].slice(2)+'/'+parseInt(p[1])+'/'+parseInt(p[2]);};
+      else if(spanDays<=730)  fmtFn=d=>{const p=d.date.split('-');return "'"+p[0].slice(2)+'/'+parseInt(p[1]);};
+      else                    fmtFn=d=>{const p=d.date.split('-');return "'"+p[0].slice(2);};
+      groupKeyFn=spanDays<=730
+        ? d=>d.date.slice(0,7)
+        : d=>d.date.slice(0,4);
+    }
+
+    ctx.font=font;
+    let labelPoints=[];
+    if(groupKeyFn===null){
+      data.forEach((_,i)=>labelPoints.push(i));
+    } else {
+      let lastKey='';
+      data.forEach((d,i)=>{
+        const key=groupKeyFn(d);
+        if(key!==lastKey){labelPoints.push(i);lastKey=key;}
+      });
+    }
+
+    const sampleIdx=labelPoints[Math.floor(labelPoints.length/2)]||0;
+    const labelW=ctx.measureText(fmtFn(data[sampleIdx])).width+8;
+    const maxLabels=Math.max(1,Math.floor(p_.w/labelW));
+    const skip=Math.ceil(labelPoints.length/maxLabels);
+
+    const H=base.cv.height/(window.devicePixelRatio||1);
+    ctx.clearRect(p_.x-20,p_.y+p_.h,p_.w+40,H-(p_.y+p_.h));
+
+    // 縦線: グラフ幅を均等分割した固定位置
+    const visibleCount=Math.ceil(labelPoints.length/skip);
+    for(let k=0;k<visibleCount;k++){
+      const x=p_.x+(visibleCount>1?k*p_.w/(visibleCount-1):0);
+      ctx.beginPath();ctx.moveTo(x,p_.y);ctx.lineTo(x,p_.y+p_.h);
+      ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;ctx.stroke();
+    }
+
+    // ラベル: 各グループ最初のデータ点位置
+    let lastLabel='';
+    labelPoints.forEach((i,j)=>{
+      if(j%skip!==0)return;
+      const label=fmtFn(data[i]);
+      if(label===lastLabel)return;
+      const x=base.xpx(i,p_);
+      ctx.textAlign='center';ctx.fillStyle='#94a3b8';
+      ctx.fillText(label,x,p_.y+p_.h+22);
+      lastLabel=label;
+    });
+  };
+  return base;
+}
+
+const d6Chart=makeChartD6('d6-cv');
+makeTip(d6Chart,'d6-tip','d6-wrap',false);
+new ResizeObserver(()=>d6Chart.resize('d6-wrap')).observe(document.getElementById('d6-wrap'));
+
+document.getElementById('d6v-trigger').addEventListener('click',e=>{
+  e.stopPropagation();
+  const dd=document.getElementById('d6v-dropdown');
+  dd.style.display=dd.style.display==='none'?'block':'none';
+});
+document.getElementById('d6v-dropdown').addEventListener('click',e=>{
+  const item=e.target.closest('.yy-item');if(!item||!item.dataset.d6type)return;
+  document.querySelectorAll('#d6v-dropdown .yy-item').forEach(x=>x.classList.remove('active'));
+  item.classList.add('active');
+  document.getElementById('d6v-label').textContent=item.textContent;
+  document.getElementById('d6v-dropdown').style.display='none';
+  d6Chart.data=filterData(item.dataset.d6type,item.dataset.d6n);
+  if(document.getElementById('d6Toggle').checked)d6Chart.calcAuto();
+  else{d6Chart.yMin=0;d6Chart.yMax=10;}
+  d6Chart.animate();
+});
+document.querySelectorAll('#d6v-dropdown .yy-item').forEach(b=>{
+  if(b.dataset.d6type==='count')return;
+  b.textContent=b.textContent+'('+countForFilter(b.dataset.d6type,b.dataset.d6n)+')';
+});
+document.getElementById('d6Toggle').addEventListener('change',e=>{
+  if(e.target.checked){const r=d6Chart.calcAutoRange();d6Chart.scaleAnimate(r.min,r.max);}
+  else d6Chart.scaleAnimate(0,10);
+});
+
+let d6Inited=false;
+
+// ══════════════════════════════════════════════════════════
+// D-7: Chart.js type:time スケーラブル実装
+// ══════════════════════════════════════════════════════════
+let _d7CjsChart=null;
+
+// unit自動判定: データ件数と表示期間から最適なunitを返す
+function d7AutoUnit(n, spanDays){
+  if(spanDays <= 240)  return 'day';
+  if(spanDays <= 730) return 'month';
+  return 'year';
+}
+
+// ラベルフォーマット: unitと期間に応じて切替
+function d7LabelFmt(ts, unit){
+  const d=new Date(ts);
+  const yy="'"+String(d.getFullYear()).slice(2);
+  if(unit==='day')   return yy+'/'+(d.getMonth()+1)+'/'+d.getDate();
+  if(unit==='month') return yy+'/'+(d.getMonth()+1);
+  return yy;
+}
+
+function initD7Chart(data, off){
+  if(typeof Chart==='undefined'){
+    console.warn('Chart.js not loaded');
+    // フォールバック: canvasに「Chart.js読み込み中...」を表示
+    const canvas=document.getElementById('d8-cv');
+    if(canvas){const ctx=canvas.getContext('2d');ctx.font='14px sans-serif';ctx.fillStyle='#94a3b8';ctx.fillText('Chart.js を読み込み中...', 20, 50);}
+    return;
+  }
+  if(!data||!data.length)return;
+  const canvas=document.getElementById('d7-cv');
+  if(!canvas)return;
+  if(_d7CjsChart){_d7CjsChart.destroy();_d7CjsChart=null;}
+
+  const n=data.length;
+  const firstDate=new Date(data[0].date);
+  const lastDate=new Date(data[n-1].date);
+  const spanDays=(lastDate-firstDate)/86400000;
+  const unit=d7AutoUnit(n, spanDays);
+
+  const COLORS={wellbeing:'#22c55e',work:'#f59e0b',love:'#ec4899',mind:'#1e3a5f',content:'#a855f7',human:'#f97316',load:'#67e8f9'};
+  const LABELS={wellbeing:'ウェルビーイングスコア',work:'仕事への活力',love:'会社への愛着',mind:'心身の状態',content:'仕事内容',human:'人間関係',load:'業務負荷'};
+  const keys=['wellbeing','work','love','mind','content','human','load'];
+
+  // LTTBデシメーション: 300件超は間引いて描画（ツールチップは全点）
+  const DECIMATION_THRESHOLD=300;
+  const useDecimation=n>DECIMATION_THRESHOLD;
+
+  const datasets=keys.map(k=>({
+    label:LABELS[k],
+    data:data.map(d=>({x:d.date,y:d[k]})),
+    borderColor:COLORS[k],
+    backgroundColor:COLORS[k],
+    borderWidth:2,
+    pointRadius:0,
+    pointHoverRadius:4.5,
+    tension:0,
+    borderCapStyle:'round',
+    borderJoinStyle:'round',
+    hidden:!!(off&&off[k]),
+  }));
+
+  const d7Toggle=document.getElementById('d7Toggle');
+  const fitScale=d7Toggle&&d7Toggle.checked;
+
+  // Y軸範囲計算
+  let yMin=0,yMax=10,stepSize=2;
+  if(fitScale){
+    let mn=Infinity,mx=-Infinity;
+    datasets.forEach(ds=>{
+      if(ds.hidden)return;
+      ds.data.forEach(p=>{if(p.y<mn)mn=p.y;if(p.y>mx)mx=p.y;});
+    });
+    if(isFinite(mn)){
+      const margin=(mx-mn)*0.05;
+      const rawMin=Math.max(0,mn-margin);
+      const rawMax=Math.min(10,mx+margin);
+      stepSize=(rawMax-rawMin)<3?0.5:1.0;
+      // stepSizeの倍数に切り捨て・切り上げ
+      yMin=Math.floor(rawMin/stepSize)*stepSize;
+      yMax=Math.ceil(rawMax/stepSize)*stepSize;
+      yMin=Math.max(0,yMin);
+      yMax=Math.min(10,yMax);
+    }
+  }
+
+  // ホバー縦線: tooltip.opacityを使ってフェードイン/アウト
+  const d7HoverDashLine={
+    id:'d7HoverDashLine',
+    afterDraw:function(chart){
+      const tooltip=chart.tooltip;
+      if(!tooltip||tooltip.opacity===0)return;
+      const ctx=chart.ctx;
+      const x=tooltip.caretX;
+      const yScale=chart.scales.y;
+      const alpha=0.12; // 即時表示
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([3,5]);
+      ctx.moveTo(x,yScale.top);
+      ctx.lineTo(x,yScale.bottom);
+      ctx.strokeStyle=`rgba(0,0,0,${alpha})`;
+      ctx.lineWidth=1;
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+  _d7CjsChart=new Chart(canvas,{
+    type:'line',
+    data:{datasets},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      animation:{duration:400,easing:'easeInOutQuart'},
+      hover:{animationDuration:0},
+      transitions:{active:{animation:{duration:0}}},
+      // LTTBデシメーション設定
+      plugins:{
+        decimation:{
+          enabled:useDecimation,
+          algorithm:'lttb',
+          samples:200,
+          threshold:DECIMATION_THRESHOLD,
+        },
+
+        legend:{display:false},
+        tooltip:{
+          animation:false,
+          mode:'index',
+          intersect:false,
+          callbacks:{
+            // ツールチップは常に実際の日付を表示
+            title:function(items){
+              const d=new Date(items[0].parsed.x);
+              return "'"+String(d.getFullYear()).slice(2)+'/'+(d.getMonth()+1)+'/'+d.getDate();
+            },
+            label:function(item){
+              if(item.dataset.hidden)return null;
+              return item.dataset.label+': '+item.parsed.y.toFixed(1);
+            }
+          }
+        }
+      },
+      interaction:{mode:'index',intersect:false},
+      tooltipAnimations:false,
+      scales:{
+        x:{
+          type:'time',
+          time:{
+            unit:unit,
+            // unitごとの表示フォーマット
+            displayFormats:{
+              day:  'yy/M/d',
+              month:'yy/M',
+              year: 'yy',
+            },
+            tooltipFormat:'yyyy/M/d',
+          },
+          ticks:{
+            // 少数データ: データ点に合わせる / 多数データ: 自動間引き
+            source:n<=12?'data':'auto',
+            autoSkip:true,
+            maxTicksLimit:n<=12?n:10,
+            maxRotation:0,
+            color:'#94a3b8',
+            font:{size:10},
+            callback:function(val){
+              return d7LabelFmt(val, unit);
+            },
+          },
+          grid:{
+            // グリッド線はtickと同位置のみ（Chart.jsデフォルト）
+            color:'rgba(0,0,0,0.06)',
+            drawTicks:false,
+          },
+          border:{display:false},
+        },
+        y:{
+          min:yMin,
+          max:yMax,
+          ticks:{stepSize:stepSize,precision:1,color:'#94a3b8',font:{size:10}},
+          grid:{display:false},
+          border:{display:false},
+        }
+      }
+    },
+    plugins:[d7HoverDashLine]
+  });
+  // ホバー点線プラグイン登録済み
+  _d7CjsChart.$d7plugin=d7HoverDashLine;
+}
+
+// D-7 ダミーchartオブジェクト（既存インターフェースと互換）
+const d7Chart={
+  data:[],
+  off:{},
+  resize:function(){if(this.data.length)initD7Chart(this.data,this.off);},
+  animate:function(){initD7Chart(this.data,this.off);},
+};
+
+document.getElementById('d7v-trigger').addEventListener('click',e=>{
+  e.stopPropagation();
+  const dd=document.getElementById('d7v-dropdown');
+  dd.style.display=dd.style.display==='none'?'block':'none';
+});
+document.getElementById('d7v-dropdown').addEventListener('click',e=>{
+  const item=e.target.closest('.yy-item');if(!item||!item.dataset.d7type)return;
+  document.querySelectorAll('#d7v-dropdown .yy-item').forEach(x=>x.classList.remove('active'));
+  item.classList.add('active');
+  document.getElementById('d7v-label').textContent=item.textContent;
+  document.getElementById('d7v-dropdown').style.display='none';
+  d7Chart.data=filterData(item.dataset.d7type,item.dataset.d7n);
+  initD7Chart(d7Chart.data,d7Chart.off);
+});
+document.querySelectorAll('#d7v-dropdown .yy-item').forEach(b=>{
+  if(b.dataset.d7type==='count')return;
+  b.textContent=b.textContent+'('+countForFilter(b.dataset.d7type,b.dataset.d7n)+')';
+});
+document.getElementById('d7Toggle').addEventListener('change',()=>{
+  if(d7Chart.data.length)initD7Chart(d7Chart.data,d7Chart.off);
+});
+
+
+// 頻度別データ生成
+function d7GenData(freq){
+  const keys=['wellbeing','work','love','mind','content','human','load'];
+  const baseVals={wellbeing:6.5,work:6.3,love:6.8,mind:6.2,content:6.5,human:7.0,load:5.5};
+  const trend={wellbeing:0.012,work:0.014,love:0.010,mind:0.016,content:0.013,human:0.008,load:0.006};
+  const rows=[];
+  const start=new Date('2020-01-07');
+  let intervalDays;
+  let count;
+  if(freq==='month1'){intervalDays=30;count=60;}
+  else if(freq==='week1'){intervalDays=7;count=260;}
+  else if(freq==='day20'){intervalDays=20;count=91;}
+  else{
+    // 不定期: 疎密のバラつきが出るよう意図的に設計
+    intervalDays=null;count=null;
+  }
+  let seed=42;
+  function rand(){seed=(seed*1103515245+12345)&0x7fffffff;return(seed/0x7fffffff)-0.5;}
+  // 不定期の場合は疎密が伝わる日程を固定で設定
+  const irregularDates=intervalDays===null?[
+    // 1〜2月: 月2回ペース（密）
+    '2020-01-07','2020-01-21','2020-02-04','2020-02-19',
+    // 3〜5月: 3ヶ月で2回のみ（疎）
+    '2020-03-15','2020-05-20',
+    // 6〜8月: 月1〜2回（中）
+    '2020-06-03','2020-06-28','2020-07-22','2020-08-10','2020-08-31',
+    // 9〜10月: 2ヶ月で1回（疎）
+    '2020-10-05',
+    // 11〜12月: 月2回ペース（密）
+    '2020-11-02','2020-11-18','2020-12-03','2020-12-21',
+    // 2021年
+    '2021-01-11','2021-02-08','2021-03-01','2021-04-19',
+    '2021-05-10','2021-05-31','2021-06-14','2021-07-26',
+    '2021-09-06','2021-11-01','2021-12-13',
+    // 2022年
+    '2022-01-17','2022-02-28','2022-04-11',
+    '2022-05-02','2022-05-23','2022-06-13','2022-07-04',
+    '2022-08-22','2022-10-03','2022-11-14','2022-12-26',
+    // 2023年
+    '2023-02-06','2023-03-27','2023-05-08',
+    '2023-06-19','2023-07-10','2023-07-31',
+    '2023-09-11','2023-10-02','2023-10-23',
+    '2023-11-13','2023-12-04','2023-12-25',
+    // 2024年
+    '2024-01-15','2024-03-04','2024-04-22',
+    '2024-05-13','2024-06-03','2024-07-15',
+    '2024-08-05','2024-09-16','2024-10-07',
+    '2024-11-18','2024-12-09',
+  ].map(d=>({date:d,_date:new Date(d)})):[];
+  const count2=intervalDays===null?irregularDates.length:count;
+  for(let i=0;i<count2;i++){
+    const d=intervalDays===null?irregularDates[i]._date:new Date(start.getTime()+i*intervalDays*86400000);
+    const dateStr=intervalDays===null?irregularDates[i].date:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const row={date:dateStr,_date:d};
+    keys.forEach(k=>{
+      const v=baseVals[k]+trend[k]*i/5+rand()*0.3;
+      row[k]=Math.round(Math.max(0,Math.min(10,v))*10)/10;
+    });
+    rows.push(row);
+  }
+  return rows;
+}
+
+let d7Inited=false;
+function initD7Y(){
+  makeLegend('d7-legend',d7Chart,()=>{
+    if(d7Chart.data.length)initD7Chart(d7Chart.data,d7Chart.off);
+  });
+  d7Chart.data=filterData('count','4');
+  initD7Chart(d7Chart.data,d7Chart.off);
+
+  document.querySelectorAll('#yv-d7 .d7-freq-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('#yv-d7 .d7-freq-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const newData=d7GenData(btn.dataset.freq);
+      const activeItem=document.querySelector('#d7v-dropdown .yy-item.active');
+      const type=activeItem?activeItem.dataset.d7type:'count';
+      const nn=activeItem?activeItem.dataset.d7n:'4';
+      const orig=ALL.slice();
+      ALL.splice(0,ALL.length,...newData);
+      d7Chart.data=filterData(type,nn);
+      ALL.splice(0,ALL.length,...orig);
+      initD7Chart(d7Chart.data,d7Chart.off);
+    });
+  });
+}
+
+
+// ══════════════════════════════════════════════════════════
+// D-6: Chart.js type:time実装
+// ══════════════════════════════════════════════════════════
+
+
+// ── 表示軸 ──
+const axChart=makeChart('ax-cv');
+makeTip(axChart,'ax-tip','ax-wrap',false);
+makeLegend('ax-legend',axChart);
+new ResizeObserver(()=>{if(document.getElementById('page-axis').classList.contains('active'))axChart.resize('ax-wrap');}).observe(document.getElementById('ax-wrap'));
+
+function axSetData(type,n){axChart.data=filterData(type,n);axChart.yMin=0;axChart.yMax=10;axChart.animate();}
+
+// A-1
+document.getElementById('filter-a1').addEventListener('click',e=>{
+  const b=e.target.closest('.filter-btn');if(!b)return;
+  document.querySelectorAll('#filter-a1 .filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  axSetData(b.dataset.type,b.dataset.n);
+});
+// A-1件数付与
+document.querySelectorAll('#filter-a1 .filter-btn').forEach(b=>{
+  if(b.dataset.type==='count')return;
+  b.textContent=b.textContent+'('+countForFilter(b.dataset.type,b.dataset.n)+')';
+});
+
+// B-1
+const b1Init=makeSegFilter('b1-seg-tabs','b1-seg-btns',SEG_DEFS,(t,n)=>axSetData(t,n));
+
+// B-2
+document.getElementById('filter-b2').addEventListener('click',e=>{
+  const b=e.target.closest('.filter-btn');if(!b)return;
+  document.querySelectorAll('#filter-b2 .filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');
+  axSetData(b.dataset.type,b.dataset.n);
+});
+document.querySelectorAll('#filter-b2 .filter-btn').forEach(b=>{
+  if(b.dataset.type==='count')return;
+  b.textContent=b.textContent+'('+countForFilter(b.dataset.type,b.dataset.n)+')';
+});
+
+// D-1
+// D-1: 直近4回分ボタン
+document.getElementById('d1-count-btn').addEventListener('click',()=>{
+  document.getElementById('d1-count-btn').classList.add('active');
+  document.getElementById('d1-period-btn').classList.remove('active');
+  document.getElementById('d1-dropdown').style.display='none';
+  document.querySelectorAll('.d1-drop-item').forEach(x=>x.classList.remove('active'));
+  axSetData('count','4');
+});
+// D-1: 期間ドロップダウン
+document.getElementById('d1-period-btn').addEventListener('click',e=>{
+  e.stopPropagation();
+  const dd=document.getElementById('d1-dropdown');
+  dd.style.display=dd.style.display==='none'?'block':'none';
+});
+document.getElementById('d1-dropdown').addEventListener('click',e=>{
+  const item=e.target.closest('.d1-drop-item');if(!item)return;
+  document.querySelectorAll('.d1-drop-item').forEach(x=>x.classList.remove('active'));
+  item.classList.add('active');
+  document.getElementById('d1-count-btn').classList.remove('active');
+  document.getElementById('d1-period-btn').classList.add('active');
+  document.getElementById('d1-period-btn').querySelector('span')||null;
+  document.getElementById('d1-dropdown').style.display='none';
+  axSetData(item.dataset.type,item.dataset.n);
+});
+// D-1: 期間ドロップダウンの件数付与
+document.querySelectorAll('.d1-drop-item').forEach(b=>{
+  b.textContent=b.textContent+'('+countForFilter(b.dataset.type,b.dataset.n)+')';
+});
+// ドロップダウン外クリックで閉じる
+
+
+
+// E-1: option件数付与
+document.querySelectorAll('.e1-item').forEach(btn=>{
+  if(btn.dataset.type==='count')return;
+  btn.textContent=btn.textContent+'('+countForFilter(btn.dataset.type,btn.dataset.n)+')';
+});
+// E-1 セレクト
+// E-1 カスタムドロップダウン
+document.getElementById('e1-trigger').addEventListener('click',e=>{
+  e.stopPropagation();
+  const dd=document.getElementById('e1-dropdown');
+  const open=dd.style.display==='none';
+  dd.style.display=open?'block':'none';
+  document.getElementById('e1-trigger').classList.toggle('open',open);
+});
+document.getElementById('e1-dropdown').addEventListener('click',e=>{
+  const item=e.target.closest('.e1-item');if(!item)return;
+  document.querySelectorAll('.e1-item').forEach(x=>x.classList.remove('active'));
+  item.classList.add('active');
+  document.getElementById('e1-label').textContent=item.textContent;
+  document.getElementById('e1-dropdown').style.display='none';
+  document.getElementById('e1-trigger').classList.remove('open');
+  axSetData(item.dataset.type,item.dataset.n);
+});
+document.addEventListener('click',()=>{
+  document.getElementById('e1-dropdown').style.display='none';
+  document.getElementById('e1-trigger').classList.remove('open');
+  ['d6v-dropdown','d7v-dropdown','d8v-dropdown','d7v-dropdown','d4v-dropdown','b3y-gran-dropdown','d1-gran-dropdown','d2-gran-dropdown','d3-gran-dropdown','d4-gran-dropdown'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+});
+
+// 表示軸 案切り替え
+document.getElementById('ax-variant-tabs').addEventListener('click',e=>{
+  const tab=e.target.closest('.variant-tab');if(!tab)return;
+  document.querySelectorAll('#ax-variant-tabs .variant-tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');
+  const av=tab.dataset.av;
+  ['a1','b1','b2','d1','e1'].forEach(id=>{document.getElementById('filter-'+id).style.display=id===av?'flex':'none';});
+  ['a1','b1','b2','d1','e1'].forEach(id=>{const el=document.getElementById('eval-'+id);if(el)el.style.display=id===av?'flex':'none';});
+  if(av==='a1'){const def=document.querySelector('#filter-a1 .filter-btn[data-n="4"]');if(def){document.querySelectorAll('#filter-a1 .filter-btn').forEach(b=>b.classList.remove('active'));def.classList.add('active');axSetData('count','4');}}
+  else if(av==='b1'){document.querySelectorAll('#b1-seg-tabs .seg-tab').forEach(t=>t.classList.toggle('active',t.dataset.seg==='count'));b1Init();}
+  else if(av==='b2'){const def=document.querySelector('#filter-b2 .filter-btn[data-n="4"]');if(def){document.querySelectorAll('#filter-b2 .filter-btn').forEach(b=>b.classList.remove('active'));def.classList.add('active');axSetData('count','4');}}
+  else if(av==='d1'){document.getElementById('d1-count-btn').classList.add('active');document.getElementById('d1-period-btn').classList.remove('active');document.querySelectorAll('.d1-drop-item').forEach(x=>x.classList.remove('active'));axSetData('count','4');}
+  else if(av==='e1'){const active=document.querySelector('.e1-item.active');if(active)axSetData(active.dataset.type,active.dataset.n);else axSetData('count','4');}
+});
+
+
+// ── 初期化 ──
+requestAnimationFrame(()=>{
+  axChart.resize('ax-wrap');
+  const def=document.querySelector('#filter-a1 .filter-btn[data-n="4"]');
+  if(def){def.classList.add('active');axSetData('count','4');}
+  loadMemo();
+});
+</script>
+
+</body>
+</html>
