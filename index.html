@@ -133,9 +133,6 @@ canvas{display:block;width:100% !important;}
 .d7-freq-btn{background:#f1f5f9;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-family:inherit;color:#334155;cursor:pointer;}
 .d7-freq-btn.active{background:#0d9488!important;color:#fff!important;}
 .d7-freq-btn:hover{opacity:0.85;}
-.d8-freq-btn{background:#f1f5f9;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-family:inherit;color:#334155;cursor:pointer;}
-.d8-freq-btn.active{background:#0d9488!important;color:#fff!important;}
-.d8-freq-btn:hover{opacity:0.85;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
@@ -223,7 +220,6 @@ canvas{display:block;width:100% !important;}
   <div class="variant-tabs" id="yv-tabs">
     <button class="variant-tab active" data-yv="d6">D-6. 時間軸ラベル</button>
     <button class="variant-tab" data-yv="d7">D-7. スケーラブル</button>
-    <button class="variant-tab" data-yv="d8">D-8. 軸単位検証</button>
   </div>
 
   <div class="yv-panel" id="yv-b1">
@@ -408,49 +404,6 @@ canvas{display:block;width:100% !important;}
 
   <!-- D-7: Chart.js type:time スケーラブル実装 -->
 
-  <!-- D-8: 軸単位検証（365/1095日閾値） -->
-  <div class="yv-panel" id="yv-d8" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-      <span style="font-size:14px;font-weight:500;color:#1e293b;">状態の遷移</span>
-      <div style="position:relative;" id="d8v-dd-wrap">
-        <button class="e1-select" id="d8v-trigger" style="display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 12px 7px 14px;font-size:13px;font-family:inherit;color:#334155;min-width:160px;">
-          <span id="d8v-label">直近4回分</span>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <div id="d8v-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);right:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.1);z-index:200;min-width:180px;padding:6px;">
-          <div class="e1-group-label">回数</div>
-          <button class="yy-item active" data-d8type="count" data-d8n="4">直近4回分</button>
-          <button class="yy-item" data-d8type="count" data-d8n="8">過去8回分</button>
-          <button class="yy-item" data-d8type="count" data-d8n="12">過去12回分</button>
-          <div class="e1-group-label" style="margin-top:4px;">期間</div>
-          <button class="yy-item" data-d8type="months" data-d8n="6">過去6ヶ月</button>
-          <button class="yy-item" data-d8type="months" data-d8n="12">過去1年</button>
-          <button class="yy-item" data-d8type="months" data-d8n="36">過去3年</button>
-          <button class="yy-item" data-d8type="all" data-d8n="">全期間</button>
-        </div>
-      </div>
-    </div>
-    <div class="card" style="padding-top:16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div class="legend" id="d8-legend" style="flex:1;margin-bottom:0;"></div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:12px;">
-          <span style="font-size:12px;color:#64748b;">スコアにフィット</span>
-          <label class="b3-toggle">
-            <input type="checkbox" id="d8Toggle" checked>
-            <span class="b3-slider"></span>
-          </label>
-        </div>
-      </div>
-      <div class="chart-wrap" id="d8-wrap" style="height:300px;"><canvas id="d8-cv"></canvas></div>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid #f1f5f9;">
-        <span style="font-size:12px;color:#64748b;flex-shrink:0;">頻度切替:</span>
-        <button class="d8-freq-btn active" data-freq="month1">月１回</button>
-        <button class="d8-freq-btn" data-freq="week1">週１回</button>
-        <button class="d8-freq-btn" data-freq="day20">20日に１回</button>
-        <button class="d8-freq-btn" data-freq="random">不定期</button>
-      </div>
-    </div>
-  </div>
 
 
 </div><!-- /page-yaxis -->
@@ -1394,7 +1347,6 @@ document.getElementById('yv-tabs').addEventListener('click',e=>{
   requestAnimationFrame(()=>{
     if(tab.dataset.yv==='d6'){if(!d6Inited){d6Inited=true;initD6Y();}else d6Chart.resize('d6-wrap');}
     if(tab.dataset.yv==='d7'){if(!d7Inited){d7Inited=true;initD7Y();}else d7Chart.resize();}
-    if(tab.dataset.yv==='d8'){if(!d8Inited){d8Inited=true;initD8Y();}else d8Chart.resize();}
   });
 });
 
@@ -1512,8 +1464,8 @@ let _d7CjsChart=null;
 
 // unit自動判定: データ件数と表示期間から最適なunitを返す
 function d7AutoUnit(n, spanDays){
-  if(spanDays <= 240)  return 'day';
-  if(spanDays <= 730) return 'month';
+  if(spanDays <= 365)  return 'day';
+  if(spanDays <= 1130) return 'month';
   return 'year';
 }
 
@@ -1834,191 +1786,6 @@ function initD7Y(){
 }
 
 
-// ══════════════════════════════════════════════════════════
-// D-8: 軸単位検証（365/1095日閾値）
-// ══════════════════════════════════════════════════════════
-let _d8CjsChart=null;
-function d8AutoUnit(n,spanDays){
-  if(spanDays<=365) return 'day';
-  if(spanDays<=1130) return 'month';
-  return 'year';
-}
-function initD8Chart(data,off){
-  if(!data||!data.length)return;
-  const canvas=document.getElementById('d8-cv');
-  if(!canvas)return;
-  if(_d8CjsChart){_d8CjsChart.destroy();_d8CjsChart=null;}
-  const n=data.length;
-  const firstDate=new Date(data[0].date);
-  const lastDate=new Date(data[n-1].date);
-  const spanDays=(lastDate-firstDate)/86400000;
-  const unit=d8AutoUnit(n,spanDays);
-  const COLORS={wellbeing:'#22c55e',work:'#f59e0b',love:'#ec4899',mind:'#1e3a5f',content:'#a855f7',human:'#f97316',load:'#67e8f9'};
-  const LABELS={wellbeing:'ウェルビーイングスコア',work:'仕事への活力',love:'会社への愛着',mind:'心身の状態',content:'仕事内容',human:'人間関係',load:'業務負荷'};
-  const keys=['wellbeing','work','love','mind','content','human','load'];
-  const datasets=keys.map(k=>({
-    label:LABELS[k],
-    data:data.map(d=>({x:d.date,y:d[k]})),
-    borderColor:COLORS[k],
-    backgroundColor:COLORS[k],
-    borderWidth:2,
-    pointRadius:0,
-    pointHoverRadius:4.5,
-    tension:0,
-    hidden:!!(off&&off[k]),
-  }));
-  const d8Toggle=document.getElementById('d8Toggle');
-  const fitScale=d8Toggle&&d8Toggle.checked;
-  let yMin=0,yMax=10,stepSize=2;
-  if(fitScale){
-    let mn=Infinity,mx=-Infinity;
-    datasets.forEach(ds=>{
-      if(ds.hidden)return;
-      ds.data.forEach(p=>{if(p.y<mn)mn=p.y;if(p.y>mx)mx=p.y;});
-    });
-    if(isFinite(mn)){
-      const margin=(mx-mn)*0.05;
-      const rawMin=Math.max(0,mn-margin);
-      const rawMax=Math.min(10,mx+margin);
-      stepSize=(rawMax-rawMin)<3?0.5:1.0;
-      yMin=Math.floor(rawMin/stepSize)*stepSize;
-      yMax=Math.ceil(rawMax/stepSize)*stepSize;
-      yMin=Math.max(0,yMin);
-      yMax=Math.min(10,yMax);
-    }
-  }
-  const d8HoverDashLine={
-    id:'d8HoverDashLine',
-    afterDraw:function(chart){
-      const tooltip=chart.tooltip;
-      if(!tooltip||tooltip.opacity===0)return;
-      const ctx=chart.ctx;
-      const x=tooltip.caretX;
-      const yScale=chart.scales.y;
-      ctx.save();
-      ctx.beginPath();
-      ctx.setLineDash([3,5]);
-      ctx.moveTo(x,yScale.top);
-      ctx.lineTo(x,yScale.bottom);
-      ctx.strokeStyle='rgba(0,0,0,0.12)';
-      ctx.lineWidth=1;
-      ctx.stroke();
-      ctx.restore();
-    }
-  };
-  _d8CjsChart=new Chart(canvas,{
-    type:'line',
-    data:{datasets},
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      animation:{duration:400,easing:'easeInOutQuart'},
-      hover:{animationDuration:0},
-      transitions:{active:{animation:{duration:0}}},
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          animation:false,
-          mode:'index',
-          intersect:false,
-          callbacks:{
-            title:function(items){
-              const d=new Date(items[0].parsed.x);
-              return "'"+String(d.getFullYear()).slice(2)+'/'+(d.getMonth()+1)+'/'+d.getDate();
-            },
-            label:function(item){
-              if(item.dataset.hidden)return null;
-              return item.dataset.label+': '+item.parsed.y.toFixed(1);
-            }
-          }
-        }
-      },
-      interaction:{mode:'index',intersect:false},
-      scales:{
-        x:{
-          type:'time',
-          time:{
-            unit:unit,
-            displayFormats:{day:'yy/M/d',month:'yy/M',year:'yy'},
-            tooltipFormat:'yyyy/M/d',
-          },
-          ticks:{
-            source:n<=12?'data':'auto',
-            autoSkip:true,
-            maxTicksLimit:n<=12?n:10,
-            maxRotation:0,
-            color:'#94a3b8',
-            font:{size:10},
-            callback:function(val){return d7LabelFmt(val,unit);},
-          },
-          grid:{color:'rgba(0,0,0,0.06)',drawTicks:false},
-          border:{display:false},
-        },
-        y:{
-          min:yMin,max:yMax,
-          ticks:{stepSize:stepSize,precision:1,color:'#94a3b8',font:{size:10}},
-          grid:{display:false},
-          border:{display:false},
-        }
-      }
-    },
-    plugins:[d8HoverDashLine]
-  });
-}
-
-const d8Chart={
-  data:[],
-  off:{},
-  resize:function(){if(this.data.length)initD8Chart(this.data,this.off);},
-  animate:function(){initD8Chart(this.data,this.off);},
-};
-
-document.getElementById('d8v-trigger').addEventListener('click',e=>{
-  e.stopPropagation();
-  const dd=document.getElementById('d8v-dropdown');
-  dd.style.display=dd.style.display==='none'?'block':'none';
-});
-document.getElementById('d8v-dropdown').addEventListener('click',e=>{
-  const item=e.target.closest('.yy-item');if(!item||!item.dataset.d8type)return;
-  document.querySelectorAll('#d8v-dropdown .yy-item').forEach(x=>x.classList.remove('active'));
-  item.classList.add('active');
-  document.getElementById('d8v-label').textContent=item.textContent;
-  document.getElementById('d8v-dropdown').style.display='none';
-  d8Chart.data=filterData(item.dataset.d8type,item.dataset.d8n);
-  initD8Chart(d8Chart.data,d8Chart.off);
-});
-document.querySelectorAll('#d8v-dropdown .yy-item').forEach(b=>{
-  if(b.dataset.d8type==='count')return;
-  b.textContent=b.textContent+'('+countForFilter(b.dataset.d8type,b.dataset.d8n)+')';
-});
-document.getElementById('d8Toggle').addEventListener('change',()=>{
-  if(d8Chart.data.length)initD8Chart(d8Chart.data,d8Chart.off);
-});
-
-let d8Inited=false;
-function initD8Y(){
-  makeLegend('d8-legend',d8Chart,()=>{
-    if(d8Chart.data.length)initD8Chart(d8Chart.data,d8Chart.off);
-  });
-  d8Chart.data=filterData('count','4');
-  initD8Chart(d8Chart.data,d8Chart.off);
-
-  document.querySelectorAll('#yv-d8 .d8-freq-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('#yv-d8 .d8-freq-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const newData=d7GenData(btn.dataset.freq);
-      const activeItem=document.querySelector('#d8v-dropdown .yy-item.active');
-      const type=activeItem?activeItem.dataset.d8type:'count';
-      const nn=activeItem?activeItem.dataset.d8n:'4';
-      const orig=ALL.slice();
-      ALL.splice(0,ALL.length,...newData);
-      d8Chart.data=filterData(type,nn);
-      ALL.splice(0,ALL.length,...orig);
-      initD8Chart(d8Chart.data,d8Chart.off);
-    });
-  });
-}
 
 // ══════════════════════════════════════════════════════════
 // D-6: Chart.js type:time実装
@@ -2089,7 +1856,7 @@ document.getElementById('e1-dropdown').addEventListener('click',e=>{
 document.addEventListener('click',()=>{
   document.getElementById('e1-dropdown').style.display='none';
   document.getElementById('e1-trigger').classList.remove('open');
-  ['d6v-dropdown','d7v-dropdown','d8v-dropdown','d7v-dropdown','d4v-dropdown','b3y-gran-dropdown','d1-gran-dropdown','d2-gran-dropdown','d3-gran-dropdown','d4-gran-dropdown'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  ['d6v-dropdown','d7v-dropdown','d4v-dropdown','b3y-gran-dropdown','d1-gran-dropdown','d2-gran-dropdown','d3-gran-dropdown','d4-gran-dropdown'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
 });
 
 // 表示軸 案切り替え
